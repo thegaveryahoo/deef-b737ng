@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "name": "Flashcard Dev Server",
+      "description": "Lokale HTTP-server voor de B737NG Flashcard Trainer PWA (poort 8080). Opent browser automatisch. Bereikbaar op LAN voor iPad/Samsung.",
+      "command": "python start_server.py",
+      "cwd": "C:/flashcards",
+      "port": 8080,
+      "url": "http://localhost:8080",
+      "type": "http"
+    },
+    {
+      "name": "Sync Server",
+      "description": "Multi-device sync server (poort 8765). Bedoeld voor Home Assistant mini PC. Serveert de app-bestanden en beheert sync-data via /api/sync.",
+      "command": "python sync_server.py",
+      "cwd": "C:/flashcards",
+      "port": 8765,
+      "url": "http://localhost:8765",
+      "type": "http"
+    }
+  ]
+}

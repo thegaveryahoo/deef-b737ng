@@ -1,0 +1,17 @@
+# Local Claude settings (permissions etc.)
+.claude/settings.local.json
+
+# Generated/temp test files
+test_*.png
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Sync data (runtime, not source)
+sync_data.json
+
+# OS
+.DS_Store
+Thumbs.db

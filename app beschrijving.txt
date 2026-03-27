@@ -1,0 +1,104 @@
+app beschrijving:
+
+
+Hier is een **zeer precieze en volledige samenvatting** die je direct kunt kopiëren en plakken naar Claude, ChatGPT of een andere AI.  
+Je hoeft verder niets meer uit te leggen — deze tekst + je PDF is voldoende.
+
+---
+
+**SAMENVATTING – OPDRACHT VOOR DE B737NG-800 FLASHCARD TRAINER APP**  
+**(Kopieer dit geheel – dit is de complete specificatie)**
+
+Ik wil een **volledige, offline, installable Progressive Web App (PWA)** voor het studeren van 190 flashcards (en in de toekomst meer) voor de Transavia B737NG-800 gezagvoerdersopleiding (NNC’s).
+
+### 1. Bronmateriaal
+- PDF-bestand: **flashcardsv2.0.pdf** (38 pagina’s).
+- Elke pagina bevat **exact 5 flashcards**.
+- Layout per pagina:
+  - Linkerhelft = **voorzijde** (visuele situatie, cockpit-foto, instrument, diagram, etc.).
+  - Rechterhelft = **achterzijde** (tekst met uitleg, soms scheidingslijntjes voor overzicht).
+- Rechtsonder op de achterzijde staat altijd een ID-nummer (bijv. “28” boven “2” → de 28 staat voor de pagina, en de 2 betekend, de 2e flashcard op die pagina, dus 28-2). Dit nummer **moet zichtbaar blijven**.
+- Gebruik de meegeleverde voorbeeld-afbeeldingen (één volledige flashcard + losse voor- en achterzijde) om de crop-kaders exact te bepalen.  
+  Zorg dat de crops schoon zijn: geen witte randen, geen afgesneden tekst, ID-nummers blijven zichtbaar (rechtsonderin de achterzijde vd flashcard), lege ruimte rechts van de achterzijde mag weg.
+
+**Belangrijk voor splitsing: Of bedenk zelf iets slims wat goed werkt**
+Maak bij voorkeur eerst een Python-script (of ingebouwde PDF-splitter in de app) dat de PDF automatisch splitst in:
+- `flashcards/front_001.png` … `front_190.png`
+- `flashcards/back_001.png` … `back_190.png`
+De crops moeten exact overeenkomen met de geprinte versie.
+
+### 2. Algemene eisen van de app
+- Volledig **offline** (werkt zonder internet).
+- Installeerbaar als echte app op **iPad** (via “Toevoegen aan startscherm” in Safari/Chrome) en Android.
+- Donker, modern, rustgevend en oogvriendelijk design (geschikt voor urenlang studeren).
+- Grote, duidelijke flashcards (bijna fullscreen op iPad).
+- Grote, makkelijk aan te tikken knoppen.
+- Swipe-ondersteuning: links = Bad, rechts = Good, tik = Flip.
+
+### 3. Flashcard-weergave
+- Voorzijde en achterzijde apart. Maar als ik het antwoord wil zien op de achterzijde, wil ik ook de voorzijde kunnen blijven zien.
+- Onder de kaart altijd zichtbaar:
+  - Kaart-ID (bijv. “Kaart 028-2” of “Nieuwe kaart”)
+  - Laatst beoordeeld (datum + tijd of “nog nooit”)
+
+### 4. Score- & Geschiedenis-systeem per kaart
+Elke kaart slaat permanent op (tot SUPERRESET):
+- `goodCount`, `mwahCount`, `badCount`
+- `lastScore`
+- `lastReviewed` (datum + tijd)
+- `reviews`
+- `nextDue`
+
+Deze statistieken zijn zichtbaar tijdens het studeren.
+
+### 5. Aanpassen & Toevoegen van flashcards
+- **Bestaande kaart aanpassen**: nieuwe voor- en/of achterzijde uploaden → oude afbeelding vervangen, maar **alle scores, tellers en geschiedenis blijven behouden**.
+- **Nieuwe flashcards toevoegen**: via dashboard een voorzijde + achterzijde uploaden. Nieuwe kaarten starten met score = null en worden automatisch meegenomen in alle cycli.
+
+### 6. Studie-cycli
+- **Supercyclus** (hoofdcyclus): lange spaced-repetition over alle kaarten.
+- **Gerichte parallelle sessies** (vanaf dashboard):
+  - Alleen Bad-kaarten
+  - Alleen Mwah-kaarten
+  - Alleen Good-kaarten
+  - Alleen Nog niet beoordeelde kaarten
+
+### 7. Spaced Repetition & Prioritering
+Bij kaarten met dezelfde “due” status:
+1. Kaart met de **oudste `lastReviewed`** eerst (langst niet geoefend).
+2. Bij gelijke datum: kaart met de **hoogste `badCount`** eerst (historisch zwakste kaart).
+3. Als laatste: op ID of toevoegvolgorde.
+
+### 8. Dashboard
+- Vier grote tegels: Nog niet beoordeeld | Bad | Mwah | Good
+- Voortgangsbalk + percentage
+- Knoppen voor alle sessies, nieuwe kaart toevoegen, export/import, SUPERRESET.
+
+### 9. SUPERRESET
+- Beveiligd met **drie duidelijke bevestigingen** + waarschuwing dat ALLES wordt gewist.
+
+### 10. Technische eisen
+- Enkele `index.html` file (Tailwind CSS toegestaan).
+- Data in localStorage met versie-systeem (zodat upgrades de studievoortgang automatisch migreren zonder verlies).
+- Export / Import JSON voor synchronisatie tussen iPad, Samsung en laptop.
+- Upgrade-vriendelijk (nieuwe versies moeten oude data veilig omzetten).
+
+Maak de app zo dat hij vanaf de eerste run direct werkt met de gesplitste PNG’s uit de map `flashcards/`, en later ook nieuwe kaarten ondersteunt via Base64-opslag.
+
+---
+
+Hier nog overige opmerkingen:
+-ik wil van elke kaart ook zien hoe vaak ik deze ooit good, bad, of mwah heb beoordeeld. Deze teller per kaart wil ik ook kunnen resetten.
+ 
+Een leer-cyclus kan erg lang duren. Want het is enorm veel. Ik wil een supercyclus kunnen starten, waarbij de gehele algoritme opnieuw begint. Maar elke keer als ik tussendoor opnieuw naar het dashboard ga, wil ik bv ook kunnen kiezen om de good-bad-of mwah kaarten even te herhalen.
+Dus dan ik de hoofdcyclus pauzeer. En dan alleen even de BAD kaarten tussendoor doe als extra parallel cyclus. Of alleen de mwah kaarten. Of dat ik alleen de bad kaarten wil blijven herhalen, en dat wanneer ik een kaart upgrade naar MWAH score, dat die dan in de andere poule terecht komen. En dat ik dan de BAD kaarten blijf herhalen totdat er alleen nog maar MWAH of GOOD over zijn.
+ 
+Dus naast de algoritme die er al was (de supercyclus, of geef het een naam), wil ik ook zelf per categorie een aparte cyclus kunnen starten. Wel moet het programma bijhouden welke score een flashcard als laatst heeft gekregen, totdat ik een SUPERRESET doe. Dan is alles weer gereset. Snap je wat ik bedoel? Vat dit goed samen, en voeg dit toe aan de samenvatting van de app.
+ 
+Ik wil ook veel statistieken zien. Zoals hoeveel kaarten er momenteel in de GOOD of BAD of MWAH categorie zitten, of in de "nog niet beoordeeld" catergorie.
+-Ik wil dat ie er grafisch aantrekkelijk uitziet om lang aan te zitten en studeren. De flashcards moeten groot en duidelijk zijn, en ook de knoppen voor beoordeling mogen makkelijk in te toetsen zijn. Ik wil de app het liefst op een ipad kunnen uitvoeren om te studeren. Ook wil ik per kaart erbij hebben staan wanneer ik deze voor het laatst heb gedaan.
+-De superreset moet beveiligd zijn met 2 of 3 bevestigingen en een melding dat deze echt alles reset, en de app als het ware opnieuw begint.
+-ik wil een flashcard ook kunnen aanpassen indien nodig. Dus als ik een screenshot toevoeg van bv de vraag van flashcard 28-2, of het antwoord van flashcard 28-2, dan wil ik dat deze in de toekomst de nieuwe afbeelding/png laat zien, zonder dat dit de scores, of resultaat beinvloed. Dus de studiecyclus moet hierdoor niet onderbroken worden.
+-als spaced repetition op een gegeven moment kaarten met dezelfde scores heeft (dus gelijke beoordeling), dan moet je de kaart die al het langst weg is gebleven het eerst opnieuw laten zien, of anders een kaart die het meest fout is beoordeeld in het verleden. Begrijp je wat ik hiermee wil bereiken?
+-is er ook iets mogelijk dat ik het programma door jou kan laten upgraden zonder dat de studievoortgang wordt beinvloed?
+-ik wil in de toekomst ook flashcards kunnen toevoegen indien nodig.

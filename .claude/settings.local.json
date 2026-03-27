@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls C:/flashcards/*.html)",
+      "Bash(pip install:*)",
+      "Bash(python app.py flashcardsv2.0.pdf)",
+      "Bash(python -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(cmd.exe /c \"powershell -Command \"\"Get-Content ''C:/flashcards/index.html'' | Select-Object -First 220 | Select-Object -Skip 183\"\"\")",
+      "Bash(cmd.exe /c \"powershell -Command \"\"\\(Get-Content -Raw ''C:/flashcards/index.html''\\).Substring\\(6800, 500\\)\"\"\")",
+      "Bash(cmd.exe /c \"powershell -NoProfile -Command \"\"$c = Get-Content -Raw -Encoding UTF8 ''C:/flashcards/index.html''; $idx = $c.IndexOf\\(''screen-dashboard''\\); Write-Output $c.Substring\\($idx, 400\\)\"\" 2>&1\")",
+      "Bash(npm --version)",
+      "Bash(winget --version)",
+      "Bash(python -c \"import urllib.request, json; print\\(''urllib ok''\\)\")",
+      "Bash(python -c \"from PIL import Image; print\\(''PIL ok''\\)\")",
+      "WebFetch(domain:gemini.google.com)",
+      "WebSearch",
+      "WebFetch(domain:www.booking.com)",
+      "WebFetch(domain:www.corendon.nl)",
+      "WebFetch(domain:www.cretamaris.gr)",
+      "WebFetch(domain:www.hotels.com)",
+      "WebFetch(domain:www.kayak.com)",
+      "WebFetch(domain:www.holidaygems.co.uk)",
+      "Bash(grep -n \"SESSION_LABELS\\\\|flagged.*return\\\\|type === ''flagged''\" C:/flashcards/index.html)",
+      "Bash(py --version)",
+      "Bash(where python:*)",
+      "Bash(where py:*)",
+      "Bash(git -C C:/flashcards remote -v)",
+      "Bash(python3 -c \":*)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -1,0 +1,2793 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>B737NG Flashcard Trainer</title>
+
+  <!-- PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="B737 Trainer">
+  <meta name="theme-color" content="#09090b">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="manifest" href="./manifest.json">
+
+  <!-- Tailwind CSS (CDN - gecached bij eerste gebruik) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tesseract.js OCR — gecached door service worker voor offline gebruik -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { overscroll-behavior: none; }
+
+    /* Smooth screen transitions */
+    .screen { min-height: 100dvh; }
+    .hidden { display: none !important; }
+
+    /* Card images */
+    .img-front-full {
+      width: 100%;
+      max-height: 62vh;
+      object-fit: contain;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .img-front-thumb {
+      width: 100%;
+      max-height: 20vh;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      opacity: 0.85;
+    }
+    .img-back-main {
+      width: 100%;
+      max-height: 34vh;
+      object-fit: contain;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    /* Swipe animation */
+    #card-swipe-area {
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    #card-swipe-area.swiping-left  { transform: translateX(-30px) rotate(-4deg); opacity: 0.7; }
+    #card-swipe-area.swiping-right { transform: translateX(30px) rotate(4deg);  opacity: 0.7; }
+    #nalas-swipe-area {
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    #nalas-swipe-area.swiping-left  { transform: translateX(-30px); opacity: 0.6; }
+    #nalas-swipe-area.swiping-right { transform: translateX(30px);  opacity: 0.6; }
+
+    /* PIN screen */
+    .pin-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid #52525b; background: transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pin-dot.filled { background: #10b981; border-color: #10b981; }
+    .pin-dot.error  { background: #ef4444; border-color: #ef4444; }
+    .pin-btn {
+      padding: 1.1rem 0; font-size: 1.5rem; font-weight: 700;
+      border-radius: 18px; background: #18181b; color: #e4e4e7;
+      border: 1.5px solid #27272a; transition: background 0.1s, transform 0.1s;
+    }
+    .pin-btn:active { background: #27272a; transform: scale(0.93); }
+
+    /* Rating buttons */
+    .btn-rate {
+      flex: 1;
+      padding: 1.1rem 0;
+      font-size: 1.25rem;
+      font-weight: 800;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+      transition: transform 0.1s, filter 0.1s;
+    }
+    .btn-rate:active { transform: scale(0.95); filter: brightness(1.2); }
+
+    /* Session tile buttons */
+    .btn-session {
+      padding: 1.1rem 1rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 22px;
+      text-align: left;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .btn-session:active { transform: scale(0.97); filter: brightness(1.15); }
+
+    /* Flip button */
+    .btn-flip {
+      background: white;
+      color: #09090b;
+      font-weight: 800;
+      font-size: 1.3rem;
+      padding: 1.1rem 3rem;
+      border-radius: 22px;
+      box-shadow: 0 4px 20px rgba(255,255,255,0.15);
+      transition: transform 0.1s, filter 0.1s;
+    }
+    .btn-flip:active { transform: scale(0.96); }
+
+    /* Progress bar */
+    .progress-track {
+      height: 10px;
+      background: #27272a;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* Stat tile */
+    .stat-tile {
+      background: #18181b;
+      border-radius: 22px;
+      padding: 1.25rem 0.75rem;
+      text-align: center;
+      border: 1px solid #27272a;
+    }
+
+    /* Achtergrond icoon watermark (dashboard + PIN) */
+    .app-bg {
+      position: relative;
+      overflow: hidden;
+    }
+    .app-bg::before {
+      content: '';
+      position: fixed;
+      bottom: -60px;
+      right: -60px;
+      width: 340px;
+      height: 340px;
+      background-image: url('./icons/icon-bg.webp');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.055;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .app-bg > * { position: relative; z-index: 1; }
+
+    /* PIN scherm achtergrond */
+    .pin-bg {
+      position: relative;
+      overflow: hidden;
+    }
+    .pin-bg::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url('./icons/icon-bg.webp');
+      background-size: 70vmin;
+      background-repeat: no-repeat;
+      background-position: center 38%;
+      opacity: 0.06;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .pin-bg > * { position: relative; z-index: 1; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 1rem;
+    }
+    @media (min-width: 640px) {
+      .modal-backdrop { align-items: center; }
+    }
+    .modal-box {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 28px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* Superreset button */
+    .btn-superreset {
+      background: #1f0808;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 1rem;
+      border-radius: 18px;
+      width: 100%;
+      transition: background 0.15s;
+    }
+    .btn-superreset:hover { background: #3b0a0a; }
+
+    /* Card ID badge */
+    .card-badge {
+      display: inline-block;
+      background: #27272a;
+      color: #a1a1aa;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      border-radius: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    .text-card-display { padding: 1.25rem; font-size: 1rem; line-height: 1.7; overflow-y: auto; max-height: 55vh; text-align: left; color: #e4e4e7; }
+    .text-card-display mark { background-color: #fbbf24; color: #111827; border-radius: 2px; padding: 0 2px; }
+    [contenteditable][data-placeholder]:empty:before { content: attr(data-placeholder); color: #52525b; pointer-events: none; display: block; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-white">
+
+<!-- ===================== BOOT LOADER ===================== -->
+<div id="screen-boot" class="screen flex items-center justify-center" style="min-height:100dvh">
+  <img src="./icons/icon-192.png" alt="loading" class="w-24 h-24 rounded-[22px] animate-pulse" style="box-shadow:0 0 40px rgba(255,100,10,0.2)">
+</div>
+
+<!-- ===================== PIN SCREEN ===================== -->
+<div id="screen-pin" class="screen hidden pin-bg max-w-xs mx-auto px-6 flex flex-col items-center justify-center" style="min-height:100dvh">
+  <div class="text-center mb-8">
+    <img src="./icons/icon-192.png" alt="icon" class="w-24 h-24 mx-auto mb-4 rounded-[22px] shadow-2xl" style="box-shadow:0 0 40px rgba(255,120,20,0.18)">
+    <h1 class="text-2xl font-black text-white leading-tight">Deef's B737NG<br><span class="text-lg font-bold text-zinc-400">Flashcard Trainer</span></h1>
+  </div>
+  <p id="pin-label" class="text-sm text-zinc-400 mb-5 text-center">Voer je PIN in</p>
+  <!-- PIN dots -->
+  <div class="flex gap-3 mb-6" id="pin-dots">
+    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+  </div>
+  <!-- Numpad -->
+  <div class="grid grid-cols-3 gap-3 w-full max-w-[280px]">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <div></div>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn text-zinc-400 text-2xl" onclick="pinBack()">⌫</button>
+  </div>
+  <p id="pin-error" class="text-red-400 text-sm mt-4 hidden">Onjuiste PIN</p>
+</div>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div id="screen-dashboard" class="screen hidden app-bg max-w-3xl mx-auto px-4 py-6">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-5">
+    <div class="flex items-center gap-3">
+      <img src="./icons/icon-192.png" alt="icon" class="w-12 h-12 rounded-[12px] shrink-0" style="box-shadow:0 0 16px rgba(255,100,10,0.2)">
+      <h1 class="text-3xl font-black tracking-tight text-white leading-tight">Deef's B737NG<br><span class="text-2xl font-black">Flashcard Trainer</span></h1>
+    </div>
+    <div class="flex gap-1.5 items-center">
+      <button onclick="showInfoModal()" title="Info &amp; versiegeschiedenis"
+              class="w-10 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:scale-95 rounded-xl text-zinc-400 transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+      </button>
+      <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="doImport(event)">
+    </div>
+  </div>
+
+  <!-- Stat tiles — klikbaar als sessie-shortcut -->
+  <div class="grid grid-cols-4 gap-2 mb-4">
+    <div class="stat-tile cursor-pointer hover:border-zinc-500 active:scale-95 transition-all" onclick="startSession('new')">
+      <div class="text-3xl font-black text-zinc-400 mb-0.5" id="count-new">0</div>
+      <div class="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Nog te doen</div>
+    </div>
+    <div class="stat-tile cursor-pointer hover:border-red-800 active:scale-95 transition-all" onclick="startSession('bad')">
+      <div class="text-3xl font-black text-red-500 mb-0.5" id="count-bad">0</div>
+      <div class="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Slecht</div>
+    </div>
+    <div class="stat-tile cursor-pointer hover:border-amber-800 active:scale-95 transition-all" onclick="startSession('mwah')">
+      <div class="text-3xl font-black text-amber-400 mb-0.5" id="count-mwah">0</div>
+      <div class="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Mwah</div>
+    </div>
+    <div class="stat-tile cursor-pointer hover:border-emerald-800 active:scale-95 transition-all" onclick="startSession('good')">
+      <div class="text-3xl font-black text-emerald-400 mb-0.5" id="count-good">0</div>
+      <div class="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Goed</div>
+    </div>
+  </div>
+
+  <!-- Progress + legenda -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4">
+    <div class="flex justify-between text-sm font-semibold mb-2">
+      <span class="text-zinc-500">Voortgang</span>
+      <div class="flex items-center gap-3">
+        <span id="streak-display" class="text-xs font-bold text-orange-400 hidden"></span>
+        <span class="text-zinc-300" id="progress-text">0 / 190 beoordeeld</span>
+      </div>
+    </div>
+    <div class="progress-track mb-2">
+      <div id="progress-fill" class="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
+      <div id="bar-bad"  class="transition-all duration-500" style="width:0%;background:#dc2626"></div>
+      <div id="bar-mwah" class="transition-all duration-500" style="width:0%;background:#f59e0b"></div>
+      <div id="bar-good" class="transition-all duration-500" style="width:0%;background:#10b981"></div>
+      <div id="bar-new"  class="transition-all duration-500" style="width:100%;background:#3f3f46"></div>
+    </div>
+    <div class="flex gap-4 text-xs text-zinc-600">
+      <span><span class="text-red-500">■</span> Slecht</span>
+      <span><span class="text-amber-400">■</span> Mwah</span>
+      <span><span class="text-emerald-400">■</span> Goed</span>
+      <span><span class="text-zinc-700">■</span> Nog te doen</span>
+    </div>
+  </div>
+
+  <!-- Due info -->
+  <div class="text-center text-sm mb-4" id="due-info"></div>
+
+  <!-- Supercyclus — primaire knop -->
+  <button id="btn-super" onclick="startSession('super')" class="w-full mb-1 p-4 flex items-center justify-between bg-emerald-900 hover:bg-emerald-800 active:scale-[0.98] border border-emerald-700 text-emerald-200 rounded-[22px] transition-all">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🚀</span>
+      <div class="text-left">
+        <div class="font-black text-base leading-tight super-btn-label">Supercyclus starten</div>
+        <div class="text-xs font-normal text-emerald-600 mt-0.5 super-btn-sub">Spaced repetition · alle kaarten</div>
+      </div>
+    </div>
+    <span class="text-emerald-500 text-xs font-bold shrink-0" id="lbl-super-due"></span>
+  </button>
+  <div class="flex justify-end mb-2">
+    <button id="btn-new-super" onclick="startNewSuperSession()" class="text-xs text-emerald-700 hover:text-emerald-400 underline transition-colors hidden">Nieuwe supercyclus starten</button>
+  </div>
+
+  <!-- Sessie-filter grid 2×2 -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <button onclick="startSession('bad')"  class="btn-session bg-red-950  hover:bg-red-900  border border-red-900/50  text-red-300">
+      <span class="text-base mr-1.5">🔴</span><span class="font-bold">Slecht</span>
+      <div class="text-xs font-normal text-red-700 mt-0.5" id="lbl-bad-count"></div>
+    </button>
+    <button onclick="startSession('mwah')" class="btn-session bg-amber-950 hover:bg-amber-900 border border-amber-900/50 text-amber-300">
+      <span class="text-base mr-1.5">🟡</span><span class="font-bold">Mwah</span>
+      <div class="text-xs font-normal text-amber-700 mt-0.5" id="lbl-mwah-count"></div>
+    </button>
+    <button onclick="startSession('good')" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">🟢</span><span class="font-bold">Goed</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-good-count"></div>
+    </button>
+    <button onclick="startSession('new')"  class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">📌</span><span class="font-bold">Nog te doen</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-new-count"></div>
+    </button>
+  </div>
+
+  <!-- Gemarkeerde kaarten -->
+  <button id="btn-flagged" onclick="startSession('flagged')" class="w-full mb-3 p-3 flex items-center justify-between bg-amber-950 hover:bg-amber-900 active:scale-[0.98] border border-amber-800/50 text-amber-200 rounded-[18px] transition-all hidden">
+    <div class="flex items-center gap-3">
+      <span class="text-xl">🔖</span>
+      <div class="text-left">
+        <div class="font-bold text-sm leading-tight">Gemarkeerde kaarten</div>
+        <div class="text-xs font-normal text-amber-700 mt-0.5">Ontwikkelnotities · ter verbetering</div>
+      </div>
+    </div>
+    <span class="text-amber-500 text-xs font-bold shrink-0" id="lbl-flagged-count"></span>
+  </button>
+
+  <!-- Naslag + Kaart toevoegen -->
+  <div class="grid grid-cols-3 gap-2 mb-4">
+    <button onclick="showNalasScreen()" class="btn-session col-span-2 bg-sky-950 hover:bg-sky-900 border border-sky-800/50 text-sky-200">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">🔍</span>
+        <div class="text-left">
+          <div class="font-bold text-sm leading-tight">Naslag</div>
+          <div class="text-xs font-normal text-sky-700 mt-0.5">Zoek op trefwoord · offline</div>
+        </div>
+      </div>
+    </button>
+    <button onclick="showAddModal()" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300 flex flex-col items-center justify-center text-center">
+      <span class="text-xl mb-1">➕</span>
+      <div class="text-xs font-semibold text-zinc-500 leading-tight">Kaart<br>toevoegen</div>
+    </button>
+  </div>
+
+  <!-- Sync balk -->
+  <div id="sync-bar" class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 mb-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 min-w-0">
+        <div id="sync-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-600 flex-shrink-0"></div>
+        <span class="text-xs text-zinc-500 truncate" id="sync-status-text">Sync niet ingesteld</span>
+      </div>
+      <div class="flex items-center gap-3 flex-shrink-0 ml-2">
+        <button onclick="manualSync()" id="btn-sync-now" class="hidden text-xs text-sky-400 hover:text-sky-300 font-semibold transition-colors">↻ Sync</button>
+        <button onclick="checkForUpdate()" class="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">↑ Update</button>
+        <button onclick="showSyncModal()" class="text-xs text-zinc-600 hover:text-zinc-400 underline transition-colors">Instellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="flex items-center justify-between mt-1">
+    <p class="text-xs text-zinc-700">v4.2 · B737NG-800 NNC Trainer · by Dave Marcelissen</p>
+    <div class="flex gap-2">
+      <button onclick="changePinFlow()" class="text-xs text-zinc-700 hover:text-zinc-400 transition-colors font-medium px-2 py-1">🔒 PIN</button>
+      <button onclick="initSuperReset()" class="text-xs text-zinc-700 hover:text-red-400 transition-colors font-medium px-2 py-1">⚠️ SUPERRESET</button>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===================== STUDY SCREEN ===================== -->
+<div id="screen-study" class="screen hidden max-w-3xl mx-auto px-4 py-4">
+
+  <!-- Sessievoortgangsbalk -->
+  <div class="w-full h-1.5 bg-zinc-800 rounded-full mb-2 overflow-hidden">
+    <div id="session-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:0%"></div>
+  </div>
+
+  <!-- Sessie-teller -->
+  <div id="session-score-row" class="flex items-center justify-between px-0.5 mb-3 text-xs font-semibold">
+    <span class="text-zinc-500" id="session-remaining-label">— te gaan</span>
+    <div class="flex gap-3">
+      <span class="text-emerald-400">G <span id="ses-good">0</span></span>
+      <span class="text-amber-400">M <span id="ses-mwah">0</span></span>
+      <span class="text-red-400">B <span id="ses-bad">0</span></span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-4">
+    <button onclick="backToDashboard()" class="flex items-center gap-1.5 text-zinc-400 hover:text-white font-semibold transition-colors">
+      <span class="text-lg">←</span> Dashboard
+    </button>
+    <div class="text-center">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-500" id="session-type-label">Supercyclus</div>
+      <div class="text-sm font-semibold text-zinc-300" id="session-progress-label">Kaart 1 / 45</div>
+    </div>
+    <div></div>
+  </div>
+
+  <!-- Card area (swipeable) -->
+  <div id="card-swipe-area" class="relative">
+    <button id="btn-flag-card" onclick="toggleFlagCard()" class="absolute top-2 right-2 text-xl text-zinc-600 z-10 p-1">🏳️</button>
+
+    <!-- FRONT ONLY VIEW -->
+    <div id="view-front">
+      <div class="mb-3 text-center">
+        <span class="card-badge">Voorzijde</span>
+      </div>
+      <img id="img-front-full" src="" alt="Voorzijde" class="img-front-full"
+           onclick="flipCard()"
+           title="Tik om te flippen">
+      <div id="card-text-front" class="text-card-display hidden"></div>
+      <p class="text-center text-zinc-600 text-xs mt-2">Tik om te flippen · Swipe → = vorige kaart · Swipe ← = overslaan</p>
+    </div>
+
+    <!-- BOTH SIDES VIEW -->
+    <div id="view-both" class="hidden">
+      <div class="mb-1">
+        <div class="text-center mb-0.5"><span class="card-badge">Voorzijde</span></div>
+        <img id="img-front-thumb" src="" alt="Voorzijde" class="img-front-thumb">
+      </div>
+      <div class="mt-1">
+        <div class="text-center mb-0.5"><span class="card-badge">Achterzijde</span></div>
+        <img id="img-back-main" src="" alt="Achterzijde" class="img-back-main">
+        <div id="card-text-back" class="text-card-display hidden"></div>
+      </div>
+    </div>
+
+  </div><!-- /card-swipe-area -->
+
+  <!-- Card info row -->
+  <div class="flex justify-between items-center mt-1 px-1">
+    <div class="text-xs text-zinc-500" id="card-id-display">Kaart 01-1</div>
+    <div class="text-xs text-zinc-500" id="last-reviewed-display">Nog nooit beoordeeld</div>
+  </div>
+
+  <!-- Per-card stats -->
+  <div class="flex items-center justify-between mt-1 px-1">
+    <div class="flex gap-4 text-sm">
+      <span class="text-emerald-400 font-semibold">G: <span id="stat-good">0</span></span>
+      <span class="text-amber-400 font-semibold">M: <span id="stat-mwah">0</span></span>
+      <span class="text-red-400 font-semibold">B: <span id="stat-bad">0</span></span>
+      <span class="text-zinc-600 text-xs mt-0.5">(<span id="stat-reviews">0</span> beoordelingen)</span>
+    </div>
+    <button onclick="resetCurrentCardStats()" class="text-xs text-zinc-600 hover:text-zinc-400 underline transition-colors">
+      Reset tellers
+    </button>
+  </div>
+
+  <!-- Flip button (shown when front only) -->
+  <div id="flip-area" class="flex justify-center mt-4 mb-2">
+    <button onclick="flipCard()" class="btn-flip">Toon antwoord</button>
+  </div>
+
+  <!-- Rating buttons (shown after flip, hidden in flagged mode) -->
+  <div id="rating-area" class="hidden mt-2">
+    <div class="text-center text-xs text-zinc-600 mb-3">Swipe ← voor Slecht · Swipe → voor Goed · of gebruik de knoppen:</div>
+    <div class="flex gap-3">
+      <button onclick="rateAndNext('bad')"  class="btn-rate bg-red-700 hover:bg-red-600">SLECHT</button>
+      <button onclick="rateAndNext('mwah')" class="btn-rate bg-amber-600 hover:bg-amber-500">MWAH</button>
+      <button onclick="rateAndNext('good')" class="btn-rate bg-emerald-600 hover:bg-emerald-500">GOED</button>
+    </div>
+  </div>
+
+  <!-- Flagged session controls (geen beoordeling) -->
+  <div id="flagged-area" class="hidden mt-3">
+    <div id="flag-note-display" class="hidden bg-amber-950/60 border border-amber-700/50 rounded-xl px-4 py-3 mb-3">
+      <div class="text-xs font-bold text-amber-400 mb-1">🔖 Opmerking</div>
+      <div id="flag-note-text" class="text-sm text-amber-200 leading-relaxed"></div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="unflagCurrentCard()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-400 text-sm">Markering verwijderen</button>
+      <button onclick="nextFlaggedCard()"   class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 rounded-2xl font-bold text-white text-sm">Volgende →</button>
+    </div>
+  </div>
+
+  <!-- Session ended message -->
+  <div id="session-done" class="hidden text-center py-10">
+    <div class="text-5xl mb-4">🎉</div>
+    <div class="text-2xl font-bold text-white mb-2">Sessie voltooid!</div>
+    <div class="text-zinc-400 mb-6" id="session-done-msg">Je hebt alle kaarten in deze sessie doorlopen.</div>
+    <button onclick="backToDashboard()" class="px-8 py-4 bg-emerald-700 hover:bg-emerald-600 rounded-2xl font-bold text-lg">
+      Terug naar dashboard
+    </button>
+  </div>
+
+</div>
+
+
+<!-- ===================== NASLAG SCREEN ===================== -->
+<div id="screen-naslag" class="screen hidden max-w-3xl mx-auto px-4 py-4">
+
+  <!-- Header -->
+  <div class="flex items-center mb-6">
+    <button onclick="backToDashboard()" class="flex items-center gap-1.5 text-zinc-400 hover:text-white font-semibold transition-colors mr-auto">
+      <span class="text-lg">←</span> Dashboard
+    </button>
+    <div class="text-center flex-1">
+      <div class="text-xl font-black text-sky-300 tracking-widest">NASLAG</div>
+      <div class="text-xs text-zinc-500">Zoek op trefwoord</div>
+    </div>
+    <div class="mr-auto w-24"></div>
+  </div>
+
+  <!-- Search bar (always visible) -->
+  <div class="flex gap-2 mb-4">
+    <input id="nalas-input" type="search" autocomplete="off" autocorrect="off" autocapitalize="characters"
+           placeholder="Bijv. IRS, TCAS, APU…"
+           class="flex-1 bg-zinc-900 border-2 border-zinc-700 focus:border-sky-500 rounded-2xl px-5 py-4 text-white text-lg font-bold tracking-wider focus:outline-none transition-colors"
+           onkeyup="if(event.key==='Enter'){searchNalas();this.blur();}">
+    <button onclick="searchNalas()" class="px-6 py-4 bg-sky-700 hover:bg-sky-600 active:scale-95 rounded-2xl font-black text-white text-lg transition-all">
+      Zoek
+    </button>
+  </div>
+
+  <!-- Hint / status -->
+  <p class="text-center text-sm text-zinc-600 mb-4" id="nalas-hint">Typ een trefwoord en tik Zoeken</p>
+
+  <!-- No results -->
+  <div id="nalas-no-results" class="hidden text-center py-12">
+    <div class="text-5xl mb-4">🔍</div>
+    <div class="text-zinc-300 font-bold text-lg mb-1" id="nalas-no-results-label">Geen kaarten gevonden</div>
+    <div class="text-zinc-600 text-sm">Probeer een ander trefwoord</div>
+  </div>
+
+  <!-- Card viewer (shown after successful search) -->
+  <div id="nalas-card-area" class="hidden">
+
+    <!-- Result info + clear -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-semibold text-sky-300" id="nalas-result-label"></div>
+      <button onclick="clearNalas()" class="text-xs text-zinc-600 hover:text-zinc-400 underline transition-colors">Nieuw zoeken</button>
+    </div>
+
+    <!-- Navigation -->
+    <div id="nalas-swipe-area">
+      <div class="flex items-center gap-3 mb-3">
+        <button onclick="nalasPrev()" id="nalas-prev-btn"
+                class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:scale-95 rounded-xl font-black text-zinc-200 text-xl transition-all disabled:opacity-25">‹</button>
+        <div class="flex-1 text-center">
+          <div class="text-xs text-zinc-500 mb-0.5" id="nalas-card-id-badge"></div>
+          <div class="text-sm font-bold text-white" id="nalas-nav-label">1 / 5</div>
+          <div class="text-xs text-sky-500 mt-0.5" id="nalas-match-info"></div>
+        </div>
+        <button onclick="nalasNext()" id="nalas-next-btn"
+                class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:scale-95 rounded-xl font-black text-zinc-200 text-xl transition-all disabled:opacity-25">›</button>
+      </div>
+
+      <!-- Voorzijde -->
+      <div class="mb-3">
+        <div class="text-center mb-1"><span class="card-badge">Voorzijde</span></div>
+        <img id="nalas-img-front" src="" alt="Voorzijde" class="img-front-thumb w-full max-h-48">
+      </div>
+
+      <!-- Achterzijde -->
+      <div>
+        <div class="text-center mb-1"><span class="card-badge">Achterzijde</span></div>
+        <img id="nalas-img-back" src="" alt="Achterzijde" class="img-back-main w-full">
+      </div>
+
+      <p class="text-center text-zinc-700 text-xs mt-3">Swipe ← → of gebruik de pijlen om te navigeren</p>
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ===================== MODAL: ADD / EDIT CARD ===================== -->
+<div id="modal-card" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h2 class="text-2xl font-bold mb-1" id="modal-card-title">Nieuwe flashcard toevoegen</h2>
+    <p class="text-sm text-zinc-500 mb-6" id="modal-card-subtitle">Upload een afbeelding voor voor- en achterzijde.</p>
+
+    <input type="hidden" id="modal-edit-id">
+
+    <!-- Voorzijde upload + annoteer -->
+    <div class="mb-5">
+      <label class="block text-sm font-semibold text-zinc-300 mb-2">Voorzijde (cockpit-foto / diagram)</label>
+      <div class="border-2 border-dashed border-zinc-700 rounded-2xl p-4 text-center hover:border-zinc-500 transition-colors cursor-pointer" onclick="document.getElementById('upload-front').click()">
+        <img id="preview-front" src="" alt="" class="hidden max-h-36 mx-auto rounded-lg mb-2">
+        <p class="text-zinc-500 text-sm" id="preview-front-label">Tik om afbeelding te kiezen</p>
+        <input type="file" id="upload-front" accept="image/*" class="hidden" onchange="previewImage('front', this)">
+      </div>
+    </div>
+
+    <!-- Achterzijde upload + annoteer -->
+    <div class="mb-7">
+      <label class="block text-sm font-semibold text-zinc-300 mb-2">Achterzijde (uitleg / antwoord)</label>
+      <div class="border-2 border-dashed border-zinc-700 rounded-2xl p-4 text-center hover:border-zinc-500 transition-colors cursor-pointer" onclick="document.getElementById('upload-back').click()">
+        <img id="preview-back" src="" alt="" class="hidden max-h-36 mx-auto rounded-lg mb-2">
+        <p class="text-zinc-500 text-sm" id="preview-back-label">Tik om afbeelding te kiezen</p>
+        <input type="file" id="upload-back" accept="image/*" class="hidden" onchange="previewImage('back', this)">
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <label class="block text-sm font-semibold text-zinc-300 mb-2">Zoektrefwoorden (Naslag)</label>
+      <input type="text" id="card-keywords"
+             placeholder="IRS, TCAS, APU, FIRE…"
+             class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-sky-500 uppercase tracking-wide">
+      <p class="text-xs text-zinc-600 mt-1.5">Komma-gescheiden · worden doorzoekbaar in Naslag (automatisch gesynchroniseerd)</p>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="hideCardModal()" class="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">
+        Annuleren
+      </button>
+      <button onclick="saveCard()" class="flex-1 py-4 bg-emerald-700 hover:bg-emerald-600 rounded-2xl font-bold text-white">
+        Opslaan
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== MODAL: SUPERRESET ===================== -->
+<div id="modal-reset" class="modal-backdrop hidden">
+  <div class="modal-box border-red-900">
+
+    <!-- Step 1: Checkboxes -->
+    <div id="reset-step-1">
+      <div class="text-center mb-5">
+        <div class="text-4xl mb-2">⚠️</div>
+        <h2 class="text-xl font-black text-red-400">SUPERRESET</h2>
+        <p class="text-zinc-500 text-sm mt-1">Kies wat je wilt wissen — de rest blijft bewaard</p>
+      </div>
+
+      <div class="space-y-2 mb-6">
+        <label class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 cursor-pointer hover:border-zinc-600 transition-colors">
+          <input type="checkbox" id="reset-scores" checked class="w-5 h-5 flex-shrink-0 accent-red-500">
+          <div>
+            <div class="font-semibold text-white text-sm">Alle scores</div>
+            <div class="text-xs text-zinc-500">Goed / Mwah / Slecht per kaart</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 cursor-pointer hover:border-zinc-600 transition-colors">
+          <input type="checkbox" id="reset-counters" checked class="w-5 h-5 flex-shrink-0 accent-red-500">
+          <div>
+            <div class="font-semibold text-white text-sm">Alle tellers</div>
+            <div class="text-xs text-zinc-500">Aantal Goed / Mwah / Slecht beoordelingen</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 cursor-pointer hover:border-zinc-600 transition-colors">
+          <input type="checkbox" id="reset-history" checked class="w-5 h-5 flex-shrink-0 accent-red-500">
+          <div>
+            <div class="font-semibold text-white text-sm">Beoordelingshistorie</div>
+            <div class="text-xs text-zinc-500">Datum, herhaalinterval, totaal beoordelingen</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 bg-zinc-900 border border-amber-900/50 rounded-2xl px-4 py-3 cursor-pointer hover:border-amber-800 transition-colors">
+          <input type="checkbox" id="reset-images" class="w-5 h-5 flex-shrink-0 accent-amber-500">
+          <div>
+            <div class="font-semibold text-amber-300 text-sm">Aangepaste afbeeldingen</div>
+            <div class="text-xs text-zinc-500">Herstel handmatig bijgewerkte afbeeldingen naar origineel</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 bg-zinc-900 border border-amber-900/50 rounded-2xl px-4 py-3 cursor-pointer hover:border-amber-800 transition-colors">
+          <input type="checkbox" id="reset-custom" class="w-5 h-5 flex-shrink-0 accent-amber-500">
+          <div>
+            <div class="font-semibold text-amber-300 text-sm">Handmatig toegevoegde kaarten</div>
+            <div class="text-xs text-zinc-500">Verwijder alle zelf toegevoegde flashcards</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="hideResetModal()" class="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">Annuleren</button>
+        <button onclick="resetStep2()" class="flex-1 py-4 bg-red-800 hover:bg-red-700 rounded-2xl font-bold text-white">Doorgaan →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Confirmation -->
+    <div id="reset-step-2" class="hidden">
+      <div class="text-center mb-4">
+        <div class="text-4xl mb-2">⚠️</div>
+        <h2 class="text-xl font-black text-red-400">Definitief bevestigen</h2>
+      </div>
+      <div class="bg-red-950 border border-red-900 rounded-2xl p-4 mb-5">
+        <p class="font-bold text-red-300 text-sm mb-2">Dit wordt definitief gewist:</p>
+        <ul id="reset-confirm-list" class="list-disc list-inside text-red-400 text-sm space-y-1"></ul>
+        <p class="mt-3 text-xs text-red-500 font-semibold">Alles wat niet aangevinkt was, blijft bewaard. Er is geen weg terug.</p>
+      </div>
+      <div class="mb-5">
+        <label class="block text-sm font-semibold text-zinc-300 mb-2">Typ <span class="text-red-400 font-mono">RESET</span> om definitief te bevestigen:</label>
+        <input type="text" id="reset-confirm-input" placeholder="RESET"
+               class="w-full bg-zinc-900 border border-red-800 rounded-xl px-4 py-3 text-white text-center font-mono text-lg uppercase tracking-widest focus:outline-none focus:border-red-600">
+      </div>
+      <div class="flex gap-3">
+        <button onclick="resetGoBack()" class="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">← Terug</button>
+        <button onclick="executeReset()" class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-white">RESET UITVOEREN</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ===================== MODAL: SYNC ===================== -->
+<div id="modal-sync" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h2 class="text-2xl font-bold mb-1">Sync instellen</h2>
+    <p class="text-sm text-zinc-500 mb-5">Automatisch synchroniseren via Google Apps Script. Werkt op iPad, Samsung en PC tegelijk.</p>
+
+    <div class="mb-4">
+      <label class="block text-sm font-semibold text-zinc-300 mb-2">Google Apps Script URL</label>
+      <input type="url" id="sync-url-input" placeholder="https://script.google.com/macros/s/..."
+             class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-zinc-500">
+      <p id="sync-test-result" class="text-xs text-zinc-600 mt-2">&nbsp;</p>
+    </div>
+
+    <button onclick="testSyncConnection()" class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-sm text-zinc-300 mb-5">
+      Verbinding testen
+    </button>
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6 text-sm">
+      <p class="font-semibold text-zinc-300 mb-2">Hoe in te stellen:</p>
+      <ol class="list-decimal list-inside space-y-1 text-zinc-500">
+        <li>Open <span class="text-zinc-300 font-mono">SYNC_SETUP.md</span> in de app-map</li>
+        <li>Kopieer de Apps Script-code naar Google</li>
+        <li>Deploy als web-app en kopieer de URL</li>
+        <li>Plak de URL hierboven en tik "Verbinding testen"</li>
+        <li>Tik Opslaan — klaar!</li>
+      </ol>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="hideSyncModal()" class="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">
+        Annuleren
+      </button>
+      <button onclick="saveSyncSettings()" class="flex-1 py-4 bg-emerald-700 hover:bg-emerald-600 rounded-2xl font-bold text-white">
+        Opslaan
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ===================== MODAL: INFO / CHANGELOG ===================== -->
+<div id="modal-info" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-height:85vh">
+    <div class="flex justify-between items-start mb-5">
+      <div>
+        <h2 class="text-2xl font-bold text-white">B737NG Trainer</h2>
+        <p class="text-sm text-zinc-500 mt-0.5">Versiegeschiedenis &amp; informatie</p>
+      </div>
+      <button onclick="hideInfoModal()" class="w-8 h-8 flex items-center justify-center rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-lg transition-colors">✕</button>
+    </div>
+
+    <div class="space-y-3 text-sm overflow-y-auto" style="max-height:60vh">
+
+      <div class="bg-zinc-800/60 border border-emerald-800/50 rounded-2xl p-4">
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-black text-emerald-400 text-base" id="info-current-version">v4.0</span>
+          <span class="text-xs bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full font-semibold">Huidig</span>
+        </div>
+        <ul class="space-y-1 text-zinc-300">
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>SUPERRESET sync fix: andere apparaten nemen de reset nu correct over</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Swipe rechts op voorzijde = terug naar vorige kaart</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Swipe links op voorzijde = overslaan (geen beoordeling)</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Dagelijkse studiestreak 🔥 op dashboard</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Sessievoortgangsbalk + G/M/B tellers tijdens studie</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>6-cijferige PIN-beveiliging (instelbaar via 🔒 PIN)</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Export/Import knoppen verwijderd (sync vervangt dit)</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Netlify HTTPS hosting — offline op iPad &amp; Samsung S24</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.9</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>Zoekindex alleen herbouwen bij gewijzigde kaarten</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Offline zoeken hersteld (index niet langer gewist bij update)</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Dashboard herontworpen: compacter, snelkoppelingen via stat-tiles</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.8</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>Tailwind &amp; Tesseract.js expliciet gecached in SW install</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>App werkt offline na één online bezoek</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Naslag: hele-woord matching (IRS ≠ "first")</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Naslag: prioritering op verticale positie in kaart gefixed</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.7</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>Service worker offline fix: Promise.allSettled in install</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>metadata.json niet langer vereist voor SW-installatie</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.6</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>Tesseract.js OCR: automatische zoekindex zonder PDF</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Naslag doorzoekt alle 380 kaartafbeeldingen in achtergrond</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.5</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>SUPERRESET: selectieve reset met 5 opties en bevestigingsstap</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Sync push direct na reset (voorkomt terughalen oude data)</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Handmatige Sync- en Update-knop op dashboard</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Auto-update: app ververst automatisch bij nieuwe versie</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v3.x — eerder</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>Naslag cockpit-zoekfunctie op trefwoord</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Google Sync: automatisch synchroniseren op alle apparaten</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Ghost-click fix Samsung S24 (pointer-events 400ms)</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Spaced repetition op kaartteller: Slecht=30 · Mwah=60 · Goed=120/240/480/760 kaarten</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Export/Import JSON backup</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Kaarten aanpassen en handmatig toevoegen</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>PWA: installeerbaar op iPad, Samsung &amp; PC</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <button onclick="hideInfoModal()" class="w-full mt-4 py-3.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 rounded-2xl font-semibold text-zinc-300 transition-all">
+      Sluiten
+    </button>
+  </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-semibold shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none bg-zinc-800 text-white border border-zinc-700">
+</div>
+
+
+<script>
+// =====================================================================
+// CONSTANTS & CONFIG
+// =====================================================================
+const APP_VERSION = "4.3";
+const STORAGE_KEY = "b737_trainer_v3";
+const TOTAL_PAGES = 38;
+const CARDS_PER_PAGE = 5;
+
+const SESSION_LABELS = {
+  super:   "Supercyclus",
+  bad:     "Slecht sessie",
+  mwah:    "Mwah sessie",
+  good:    "Goed sessie",
+  new:     "Nog te doen",
+  flagged: "Gemarkeerde kaarten"
+};
+
+// Spaced repetition — op basis van kaartenaantal (niet tijd)
+// Na beoordeling bepaalt de teller hoeveel andere kaarten je ziet voor deze terugkomt
+const INTERVALS = {
+  bad:  30,                    // herhaal na ~30 kaarten
+  mwah: 60,                    // herhaal na ~60 kaarten
+  good: [120, 240, 480, 760]  // groeit per goodCount: 1e goed=120, 2e=240, 3e=480, 4e+=760
+};
+
+// Globale teller: hoeveel kaarten heb je totaal gezien op dit apparaat
+const SEEN_COUNT_KEY = 'b737_seen_count';
+function getSeenCount() { return parseInt(localStorage.getItem(SEEN_COUNT_KEY) || '0'); }
+function incSeenCount() {
+  const n = getSeenCount() + 1;
+  localStorage.setItem(SEEN_COUNT_KEY, String(n));
+  return n;
+}
+function cardInterval(score, goodCount) {
+  if (score === 'bad')  return INTERVALS.bad;
+  if (score === 'mwah') return INTERVALS.mwah;
+  return INTERVALS.good[Math.min(goodCount, INTERVALS.good.length - 1)];
+}
+
+// =====================================================================
+// STATE
+// =====================================================================
+let cards = [];
+let session = null; // { type, queue (array of card IDs), index, startedAt }
+
+// =====================================================================
+// CARD DATA FACTORY
+// =====================================================================
+function makeInitialCards() {
+  const list = [];
+  for (let p = 1; p <= TOTAL_PAGES; p++) {
+    for (let c = 1; c <= CARDS_PER_PAGE; c++) {
+      const pp = String(p).padStart(2, '0');
+      list.push(makeBlankCard(`${pp}-${c}`, `flashcards/front_${pp}_${c}.png`, `flashcards/back_${pp}_${c}.png`));
+    }
+  }
+  return list;
+}
+
+function makeBlankCard(id, front, back) {
+  return {
+    id,
+    front,
+    back,
+    goodCount: 0,
+    mwahCount: 0,
+    badCount: 0,
+    lastScore: null,
+    lastReviewed: null,
+    reviews: 0,
+    nextDue: 0,
+    custom: false,
+    imageUpdatedAt: null,
+    keywords: '',
+    type: 'image',
+    frontText: '',
+    backText: '',
+    flagged: false,
+    flagNote: ''
+  };
+}
+
+// =====================================================================
+// LOAD / SAVE / MIGRATE
+// =====================================================================
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    cards = makeInitialCards();
+    saveData();
+    return;
+  }
+  try {
+    const saved = JSON.parse(raw);
+    cards = saved.cards || makeInitialCards();
+    // Migration: ensure all fields exist
+    cards.forEach(c => {
+      c.goodCount   = c.goodCount   || 0;
+      c.mwahCount   = c.mwahCount   || 0;
+      c.badCount    = c.badCount    || 0;
+      c.lastScore   = c.lastScore   || null;
+      c.lastReviewed= c.lastReviewed|| null;
+      c.reviews     = c.reviews     || 0;
+      // Migratie: oude nextDue was een timestamp (> 100000 ms), reset naar 0 = meteen due
+      c.nextDue = (c.nextDue && c.nextDue > 100000) ? 0 : (c.nextDue || 0);
+      c.custom      = c.custom      || false;
+      if (c.imageUpdatedAt === undefined) c.imageUpdatedAt = null;
+      if (c.keywords === undefined) c.keywords = '';
+      if (!c.type) c.type = 'image';
+      if (c.frontText === undefined) c.frontText = '';
+      if (c.backText === undefined) c.backText = '';
+      if (c.flagged === undefined) c.flagged = false;
+      if (c.flagNote === undefined) c.flagNote = '';
+    });
+  } catch(e) {
+    console.error("Fout bij laden data:", e);
+    cards = makeInitialCards();
+  }
+  saveData();
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: APP_VERSION, cards }));
+  schedulePush();
+}
+
+// =====================================================================
+// DASHBOARD
+// =====================================================================
+// =====================================================================
+// PIN BEVEILIGING — hash-gebaseerd, gesynchroniseerd via Google Sync
+// =====================================================================
+// Hoe het werkt:
+//  • PIN wordt nooit in plaintext opgeslagen — alleen SHA-256 hash
+//  • Hash wordt gesynchroniseerd via Google Apps Script (net als kaartdata)
+//  • Nieuw apparaat: haalt hash op van server → vereist juiste PIN
+//  • Rate-limiting: 5 foutieve pogingen → 15 minuten geblokkeerd
+//  • PIN wijzigen: vereist huidige PIN als verificatie
+// =====================================================================
+const MAX_PIN_TRIES  = 5;
+const PIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minuten
+
+let pinBuffer  = '';
+let pinMode    = 'enter'; // 'enter'|'set-new'|'confirm-new'|'verify-change'
+let pinNewTemp = '';
+
+async function hashPin(pin) {
+  const data = new TextEncoder().encode('b737ng-2026-' + pin);
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getLocalPinHash()  { return localStorage.getItem(PIN_HASH_KEY); }
+function isPinLocked()      { return Date.now() < parseInt(localStorage.getItem(PIN_LOCK_KEY)||'0'); }
+function pinLockMinsLeft()  { return Math.ceil((parseInt(localStorage.getItem(PIN_LOCK_KEY)||'0') - Date.now()) / 60000); }
+
+function recordPinFailure() {
+  const tries = parseInt(localStorage.getItem(PIN_TRIES_KEY)||'0') + 1;
+  if (tries >= MAX_PIN_TRIES) {
+    localStorage.setItem(PIN_LOCK_KEY, String(Date.now() + PIN_LOCKOUT_MS));
+    localStorage.removeItem(PIN_TRIES_KEY);
+    return true; // locked now
+  }
+  localStorage.setItem(PIN_TRIES_KEY, String(tries));
+  return false;
+}
+
+function clearPinFailures() {
+  localStorage.removeItem(PIN_TRIES_KEY);
+  localStorage.removeItem(PIN_LOCK_KEY);
+}
+
+function hideBoot() {
+  document.getElementById('screen-boot').classList.add('hidden');
+}
+
+async function initPin() {
+  // Al ingelogd binnen de afgelopen 4 uur op dit apparaat? Dan direct naar dashboard
+  const unlockUntil = parseInt(localStorage.getItem(PIN_UNLOCK_KEY) || '0');
+  if (Date.now() < unlockUntil) {
+    hideBoot();
+    showDashboard();
+    if (getSyncUrl()) syncWithServer();
+    return;
+  }
+
+  // Check lockout first
+  if (isPinLocked()) {
+    setPinLabel(`Geblokkeerd — probeer over ${pinLockMinsLeft()} min`);
+    showPinScreen(true); // disable numpad
+    return;
+  }
+
+  const localHash = getLocalPinHash();
+  if (localHash) {
+    // Hash known locally — show entry screen
+    pinMode = 'enter';
+    setPinLabel('Voer je PIN in');
+    showPinScreen();
+    return;
+  }
+
+  // No local hash — try to fetch from server
+  const syncUrl = getSyncUrl();
+  if (syncUrl && navigator.onLine) {
+    setPinLabel('Verbinding maken…');
+    showPinScreen(true);
+    try {
+      const res  = await fetch(buildSyncUrl(syncUrl));
+      const data = res.ok ? await res.json() : {};
+      const pc   = (data.cards || []).find(c => c.id === '_pin_hash');
+      if (pc && pc.keywords) {
+        localStorage.setItem(PIN_HASH_KEY,    pc.keywords);
+        localStorage.setItem(PIN_CHANGED_KEY, String(pc.lastReviewed ? new Date(pc.lastReviewed).getTime() : Date.now()));
+        pinMode = 'enter';
+        setPinLabel('Voer je PIN in');
+        showPinScreen();
+        return;
+      }
+    } catch(e) {}
+  }
+
+  if (!localHash && !navigator.onLine) {
+    // Offline and no local hash — can't log in
+    setPinLabel('Verbinding vereist voor eerste login op dit apparaat');
+    showPinScreen(true);
+    return;
+  }
+
+  // No hash anywhere — first-time setup
+  pinMode = 'set-new';
+  setPinLabel('Kies een PIN van 6 cijfers');
+  showPinScreen();
+}
+
+function setPinLabel(text) {
+  document.getElementById('pin-label').textContent = text;
+}
+
+function showPinScreen(disabled = false) {
+  hideBoot();
+  document.getElementById('screen-pin').classList.remove('hidden');
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  pinBuffer = '';
+  renderPinDots();
+  // En/disable numpad
+  document.querySelectorAll('.pin-btn').forEach(b => b.disabled = disabled);
+}
+
+function pinPress(digit) {
+  if (isPinLocked()) return;
+  if (pinBuffer.length >= 6) return;
+  pinBuffer += digit;
+  renderPinDots();
+  document.getElementById('pin-error').classList.add('hidden');
+  if (pinBuffer.length === 6) setTimeout(() => handlePinComplete(), 120);
+}
+
+function pinBack() {
+  if (pinBuffer.length === 0) return;
+  pinBuffer = pinBuffer.slice(0, -1);
+  renderPinDots();
+}
+
+function renderPinDots(state) {
+  document.querySelectorAll('.pin-dot').forEach((d, i) => {
+    d.classList.remove('filled', 'error');
+    if (state === 'error') d.classList.add('error');
+    else if (i < pinBuffer.length) d.classList.add('filled');
+  });
+}
+
+function showPinError(msg) {
+  const el = document.getElementById('pin-error');
+  el.textContent = msg || 'Onjuiste PIN';
+  el.classList.remove('hidden');
+  renderPinDots('error');
+  setTimeout(() => { pinBuffer = ''; renderPinDots(); }, 700);
+}
+
+async function handlePinComplete() {
+  if (isPinLocked()) {
+    setPinLabel(`Geblokkeerd — probeer over ${pinLockMinsLeft()} min`);
+    pinBuffer = ''; renderPinDots();
+    return;
+  }
+
+  const entered = pinBuffer;
+  const hash    = await hashPin(entered);
+
+  if (pinMode === 'enter') {
+    if (hash === getLocalPinHash()) {
+      clearPinFailures();
+      localStorage.setItem(PIN_UNLOCK_KEY, String(Date.now() + PIN_SESSION_MS));
+      document.getElementById('screen-pin').classList.add('hidden');
+      showDashboard();
+      if (getSyncUrl()) syncWithServer();
+    } else {
+      const locked = recordPinFailure();
+      if (locked) {
+        setPinLabel(`Geblokkeerd — probeer over ${pinLockMinsLeft()} min`);
+        document.querySelectorAll('.pin-btn').forEach(b => b.disabled = true);
+        pinBuffer = ''; renderPinDots();
+      } else {
+        const left = MAX_PIN_TRIES - parseInt(localStorage.getItem(PIN_TRIES_KEY)||'0');
+        showPinError(`Onjuiste PIN — nog ${left} poging${left !== 1 ? 'en' : ''}`);
+      }
+    }
+
+  } else if (pinMode === 'set-new') {
+    pinNewTemp = entered;
+    pinMode    = 'confirm-new';
+    pinBuffer  = '';
+    renderPinDots();
+    setPinLabel('Bevestig je PIN');
+
+  } else if (pinMode === 'confirm-new') {
+    if (entered === pinNewTemp) {
+      await savePinHash(hash);
+      localStorage.setItem(PIN_UNLOCK_KEY, String(Date.now() + PIN_SESSION_MS));
+      document.getElementById('screen-pin').classList.add('hidden');
+      showDashboard();
+      if (getSyncUrl()) syncWithServer();
+    } else {
+      showPinError('PINs komen niet overeen');
+      setTimeout(() => {
+        pinMode = 'set-new'; pinNewTemp = '';
+        setPinLabel('Kies een PIN van 6 cijfers');
+        document.getElementById('pin-error').classList.add('hidden');
+      }, 800);
+    }
+
+  } else if (pinMode === 'verify-change') {
+    if (hash === getLocalPinHash()) {
+      // Huidige PIN correct — nu nieuwe PIN kiezen
+      clearPinFailures();
+      pinMode = 'set-new'; pinBuffer = ''; pinNewTemp = '';
+      renderPinDots();
+      setPinLabel('Kies je nieuwe PIN');
+    } else {
+      const locked = recordPinFailure();
+      if (locked) {
+        setPinLabel(`Geblokkeerd — probeer over ${pinLockMinsLeft()} min`);
+        document.querySelectorAll('.pin-btn').forEach(b => b.disabled = true);
+        pinBuffer = ''; renderPinDots();
+      } else {
+        showPinError('Onjuiste PIN');
+      }
+    }
+  }
+}
+
+async function savePinHash(hash) {
+  localStorage.setItem(PIN_HASH_KEY,    hash);
+  localStorage.setItem(PIN_CHANGED_KEY, String(Date.now()));
+  // Direct pushen zodat andere apparaten de nieuwe hash ontvangen
+  if (getSyncUrl() && navigator.onLine) {
+    await pushToServer(true);
+  }
+}
+
+function changePinFlow() {
+  if (!getLocalPinHash()) return; // geen PIN ingesteld — kan niet wijzigen
+  pinMode = 'verify-change';
+  pinBuffer = ''; pinNewTemp = '';
+  document.getElementById('pin-error').classList.add('hidden');
+  document.querySelectorAll('.pin-btn').forEach(b => b.disabled = false);
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  document.getElementById('screen-pin').classList.remove('hidden');
+  renderPinDots();
+  setPinLabel('Voer je huidige PIN in');
+}
+
+// =====================================================================
+// STREAK
+// =====================================================================
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+}
+
+function updateStreak() {
+  const today = todayStr();
+  let s = { date: null, count: 0 };
+  try { s = JSON.parse(localStorage.getItem(STREAK_KEY)) || s; } catch(e) {}
+  if (s.date === today) return; // al geteld vandaag
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  s.count = (s.date === yesterday) ? s.count + 1 : 1;
+  s.date  = today;
+  localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+}
+
+function getStreakCount() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STREAK_KEY));
+    if (!s || s.date !== todayStr()) return 0; // streak niet actief vandaag
+    return s.count || 0;
+  } catch(e) { return 0; }
+}
+
+function updateDashboard() {
+  const total = cards.length;
+  const newCards  = cards.filter(c => !c.lastScore);
+  const badCards  = cards.filter(c => c.lastScore === 'bad');
+  const mwahCards = cards.filter(c => c.lastScore === 'mwah');
+  const goodCards = cards.filter(c => c.lastScore === 'good');
+  const done = total - newCards.length;
+
+  // Streak
+  const streakEl = document.getElementById('streak-display');
+  if (streakEl) {
+    const sc = getStreakCount();
+    if (sc >= 2) {
+      streakEl.textContent = `🔥 ${sc} dagen`;
+      streakEl.classList.remove('hidden');
+    } else if (sc === 1) {
+      streakEl.textContent = `🔥 1 dag`;
+      streakEl.classList.remove('hidden');
+    } else {
+      streakEl.classList.add('hidden');
+    }
+  }
+
+  // Stat tiles
+  document.getElementById('count-new').textContent  = newCards.length;
+  document.getElementById('count-bad').textContent  = badCards.length;
+  document.getElementById('count-mwah').textContent = mwahCards.length;
+  document.getElementById('count-good').textContent = goodCards.length;
+
+  // Progress bar
+  const pct = total > 0 ? (done / total) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${done} / ${total} beoordeeld`;
+
+  // Category bar
+  document.getElementById('bar-bad').style.width  = (badCards.length  / total * 100) + '%';
+  document.getElementById('bar-mwah').style.width = (mwahCards.length / total * 100) + '%';
+  document.getElementById('bar-good').style.width = (goodCards.length / total * 100) + '%';
+  document.getElementById('bar-new').style.width  = (newCards.length  / total * 100) + '%';
+
+  // Session labels
+  document.getElementById('lbl-bad-count').textContent  = `${badCards.length}  kaarten`;
+  document.getElementById('lbl-mwah-count').textContent = `${mwahCards.length} kaarten`;
+  document.getElementById('lbl-good-count').textContent = `${goodCards.length} kaarten`;
+  document.getElementById('lbl-new-count').textContent  = `${newCards.length}  kaarten`;
+
+  // Due-info op basis van kaartteller (niet tijd)
+  const sc = getSeenCount();
+  const dueNow    = cards.filter(c => !c.lastScore || c.nextDue <= sc).length;
+  const reviewDue = cards.filter(c => c.lastScore && c.nextDue <= sc).length;
+  const dueInfo   = document.getElementById('due-info');
+  const superDueEl = document.getElementById('lbl-super-due');
+  if (superDueEl) superDueEl.textContent = dueNow > 0 ? `${dueNow} klaar` : 'alles bij';
+  // Supercyclus knop label
+  const savedSuper = loadSuperSession();
+  const superBtnLabel = document.querySelector('.super-btn-label');
+  const superBtnSub   = document.querySelector('.super-btn-sub');
+  const btnNewSuper   = document.getElementById('btn-new-super');
+  if (superBtnLabel) {
+    const hasActive = savedSuper && savedSuper.index < savedSuper.queue.length;
+    superBtnLabel.textContent = hasActive ? 'Supercyclus vervolgen' : 'Supercyclus starten';
+    if (superBtnSub) {
+      superBtnSub.textContent = hasActive
+        ? `${savedSuper.index}/${savedSuper.queue.length} kaarten · ${Math.round(savedSuper.index/savedSuper.queue.length*100)}% gedaan`
+        : 'Spaced repetition · alle kaarten';
+    }
+    if (btnNewSuper) btnNewSuper.classList.toggle('hidden', !hasActive);
+  }
+  // Gemarkeerde kaarten badge
+  const flagCount = cards.filter(c => c.flagged).length;
+  const lblFlagged = document.getElementById('lbl-flagged-count');
+  const btnFlagged = document.getElementById('btn-flagged');
+  if (lblFlagged) lblFlagged.textContent = flagCount > 0 ? `${flagCount} kaarten` : '';
+  if (btnFlagged) btnFlagged.classList.toggle('hidden', flagCount === 0);
+  if (reviewDue > 0) {
+    dueInfo.textContent = `${reviewDue} kaart${reviewDue !== 1 ? 'en' : ''} klaar voor herhaling`;
+    dueInfo.className = 'text-center text-sm text-emerald-500 mb-4 font-semibold';
+  } else {
+    const nextUp = cards.filter(c => c.lastScore && c.nextDue > sc)
+      .sort((a, b) => a.nextDue - b.nextDue);
+    if (nextUp.length > 0) {
+      const n = nextUp[0].nextDue - sc;
+      dueInfo.textContent = `Volgende herhaling over ~${n} kaarten`;
+      dueInfo.className = 'text-center text-sm text-zinc-600 mb-4';
+    } else {
+      dueInfo.textContent = '';
+      dueInfo.className = 'text-center text-sm mb-4';
+    }
+  }
+}
+
+function showDashboard() {
+  document.getElementById('screen-study').classList.add('hidden');
+  document.getElementById('screen-naslag').classList.add('hidden');
+  document.getElementById('screen-dashboard').classList.remove('hidden');
+  updateDashboard();
+  maybeSyncOnDashboard();
+}
+
+// =====================================================================
+// SESSIONS
+// =====================================================================
+function getSessionQueue(type) {
+  const now = Date.now();
+  let pool;
+
+  if (type === 'flagged') return cards.filter(c => c.flagged).map(c => c.id);
+
+  const seenCount = getSeenCount();
+  if (type === 'super') {
+    // Supercyclus: altijd alle kaarten, gesorteerd op urgentie:
+    // 1. Nooit gezien (new) → altijd eerst
+    // 2. Due kaarten (nextDue <= seenCount) → meest overdue eerst
+    // 3. Nog niet due → soonest due eerst (zodat er altijd iets te doen is)
+    pool = [...cards];
+    pool.forEach(c => c._rand = Math.random());
+    pool.sort((a, b) => {
+      const aNew = !a.lastScore;
+      const bNew = !b.lastScore;
+      if (aNew !== bNew) return aNew ? -1 : 1;
+      const aDiff = (a.nextDue || 0) - seenCount; // negatief = overdue
+      const bDiff = (b.nextDue || 0) - seenCount;
+      if (aDiff !== bDiff) return aDiff - bDiff;   // meest overdue eerst
+      return a._rand - b._rand;
+    });
+  } else if (type === 'bad')  { pool = cards.filter(c => c.lastScore === 'bad');  }
+  else if (type === 'mwah')   { pool = cards.filter(c => c.lastScore === 'mwah'); }
+  else if (type === 'good')   { pool = cards.filter(c => c.lastScore === 'good'); }
+  else if (type === 'new')    { pool = cards.filter(c => !c.lastScore);           }
+  else { pool = [...cards]; }
+
+  // Niet-super sessies: willekeurige volgorde
+  if (type !== 'super') {
+    pool.forEach(c => c._rand = Math.random());
+    pool.sort((a, b) => a._rand - b._rand);
+  }
+
+  return pool.map(c => c.id);
+}
+
+function startSession(type, forceNew = false) {
+  let resumeState = null;
+  if (type === 'super' && !forceNew) {
+    const saved = loadSuperSession();
+    if (saved && saved.index < saved.queue.length) resumeState = saved;
+  }
+  if (resumeState) {
+    session = resumeState;
+  } else {
+    const queue = getSessionQueue(type);
+    if (queue.length === 0) { showToast(`Geen kaarten voor "${SESSION_LABELS[type] || type}"`); return; }
+    session = { type, queue, index: 0, startedAt: Date.now(), good: 0, mwah: 0, bad: 0 };
+    if (type === 'super') saveSuperSession();
+  }
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  document.getElementById('screen-study').classList.remove('hidden');
+  showCurrentCard();
+}
+
+function saveSuperSession() {
+  if (session && session.type === 'super') localStorage.setItem(SUPER_SESSION_KEY, JSON.stringify(session));
+}
+function loadSuperSession() {
+  try { const r = localStorage.getItem(SUPER_SESSION_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+}
+function clearSuperSession() { localStorage.removeItem(SUPER_SESSION_KEY); }
+function startNewSuperSession() { clearSuperSession(); startSession('super', true); }
+
+function toggleFlagCard() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  if (card.flagged) {
+    card.flagged = false; card.flagNote = '';
+    saveData(); updateFlagButton(); showToast('Markering verwijderd');
+  } else { showFlagModal(); }
+}
+function showFlagModal() {
+  const card = getCard(session.queue[session.index]);
+  document.getElementById('flag-note-input').value = card ? (card.flagNote || '') : '';
+  document.getElementById('modal-flag').classList.remove('hidden');
+}
+function hideFlagModal() { document.getElementById('modal-flag').classList.add('hidden'); }
+function saveFlagNote() {
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  card.flagged = true;
+  card.flagNote = document.getElementById('flag-note-input').value.trim();
+  saveData(); hideFlagModal(); updateFlagButton(); updateDashboard(); showToast('Kaart gemarkeerd 🔖');
+}
+function unflagCurrentCard() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  card.flagged = false; card.flagNote = '';
+  saveData(); updateDashboard(); showToast('Markering verwijderd');
+  session.index++; showCurrentCard();
+}
+function nextFlaggedCard() {
+  if (!session) return;
+  session.index++; showCurrentCard();
+}
+function updateFlagButton() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  const btn = document.getElementById('btn-flag-card');
+  if (!btn) return;
+  const isFlagged = !!(card && card.flagged);
+  btn.textContent = isFlagged ? '🔖' : '🏳️';
+  btn.className = `absolute top-2 right-2 text-xl z-10 p-1 transition-colors ${isFlagged ? 'text-amber-400' : 'text-zinc-600'}`;
+}
+function showCurrentCard() {
+  if (!session) return;
+
+  // Hide session-done, show card areas
+  document.getElementById('session-done').classList.add('hidden');
+  document.getElementById('card-swipe-area').classList.remove('hidden');
+  const isFlaggedSession = session.type === 'flagged';
+  document.getElementById('flip-area').classList.toggle('hidden', isFlaggedSession);
+  document.getElementById('flagged-area').classList.toggle('hidden', !isFlaggedSession);
+  // G/M/B sessieteller verbergen in flagged mode
+  document.getElementById('session-score-row').style.display = isFlaggedSession ? 'none' : '';
+
+  // Check if done
+  if (session.index >= session.queue.length) {
+    showSessionDone();
+    return;
+  }
+
+  const card = getCard(session.queue[session.index]);
+  if (!card) {
+    session.index++;
+    showCurrentCard();
+    return;
+  }
+
+  // Tel deze kaart als 'gezien' — basis voor spaced repetition teller
+  incSeenCount();
+
+  // Reset to front view
+  showFrontOnly(card);
+
+  // Update header
+  document.getElementById('session-type-label').textContent = SESSION_LABELS[session.type] || session.type;
+  document.getElementById('session-progress-label').textContent =
+    `Kaart ${session.index + 1} / ${session.queue.length}`;
+
+  // Voortgangsbalk
+  const pct = session.queue.length > 0 ? (session.index / session.queue.length) * 100 : 0;
+  document.getElementById('session-progress-bar').style.width = pct + '%';
+
+  // Sessie-teller
+  const remaining = session.queue.length - session.index;
+  document.getElementById('session-remaining-label').textContent = `${remaining} te gaan`;
+  document.getElementById('ses-good').textContent = session.good || 0;
+  document.getElementById('ses-mwah').textContent = session.mwah || 0;
+  document.getElementById('ses-bad').textContent  = session.bad  || 0;
+
+  // Card meta
+  document.getElementById('card-id-display').textContent = `Kaart ${card.id}`;
+  updateLastReviewed(card);
+  updateCardStats(card);
+
+  // Flagged session: toon beide zijden direct + notitie (geen flip nodig)
+  if (isFlaggedSession) {
+    document.getElementById('img-front-thumb').src = card.front;
+    document.getElementById('img-back-main').src   = card.back;
+    document.getElementById('view-front').classList.add('hidden');
+    document.getElementById('view-both').classList.remove('hidden');
+    document.getElementById('flip-area').classList.add('hidden');
+    document.getElementById('rating-area').classList.add('hidden');
+    const noteEl   = document.getElementById('flag-note-display');
+    const noteText = document.getElementById('flag-note-text');
+    const hasNote  = card.flagNote && card.flagNote.trim();
+    noteEl.classList.toggle('hidden', !hasNote);
+    if (hasNote) noteText.textContent = card.flagNote;
+  }
+  updateFlagButton();
+}
+
+function showFrontOnly(card) {
+  document.getElementById('img-front-full').src = card.front;
+  document.getElementById('view-front').classList.remove('hidden');
+  document.getElementById('view-both').classList.add('hidden');
+  document.getElementById('flip-area').classList.remove('hidden');
+  document.getElementById('rating-area').classList.add('hidden');
+}
+
+function flipCard() {
+  if (session && session.type === 'flagged') return; // geen flip in flagged mode
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+
+  const isText = card.type === 'text';
+  const imgFrontThumb = document.getElementById('img-front-thumb');
+  const imgBackMain   = document.getElementById('img-back-main');
+  const txtBack       = document.getElementById('card-text-back');
+  if (!isText) {
+    imgFrontThumb.src = card.front;
+    imgBackMain.src   = card.back;
+  }
+  if (imgFrontThumb) imgFrontThumb.classList.toggle('hidden', isText);
+  if (imgBackMain)   imgBackMain.classList.toggle('hidden', isText);
+  if (txtBack) { txtBack.classList.toggle('hidden', !isText); if (isText) txtBack.innerHTML = card.backText || '<em class="text-zinc-500">Geen tekst</em>'; }
+  document.getElementById('view-front').classList.add('hidden');
+  document.getElementById('view-both').classList.remove('hidden');
+  document.getElementById('flip-area').classList.add('hidden');
+  document.getElementById('rating-area').classList.remove('hidden');
+
+  // Blokkeer ghost-clicks op Android: rating-knoppen 400ms niet klikbaar
+  const ra = document.getElementById('rating-area');
+  ra.style.pointerEvents = 'none';
+  setTimeout(() => { ra.style.pointerEvents = ''; }, 400);
+}
+
+function rateAndNext(score) {
+  if (!session || session.index >= session.queue.length) return;
+  const cardId = session.queue[session.index];
+  const card = getCard(cardId);
+  if (!card) { session.index++; showCurrentCard(); return; }
+
+  // Update card stats
+  card.lastScore = score;
+  card.lastReviewed = new Date().toISOString();
+  card.reviews = (card.reviews || 0) + 1;
+  const seenNow = getSeenCount();
+  if (score === 'good') {
+    card.goodCount++;
+    card.nextDue = seenNow + cardInterval('good', card.goodCount - 1);
+  } else if (score === 'mwah') {
+    card.mwahCount++;
+    card.nextDue = seenNow + INTERVALS.mwah;
+  } else {
+    card.badCount++;
+    card.nextDue = seenNow + INTERVALS.bad;
+  }
+
+  // Sessie-stats bijhouden
+  if (session) {
+    if (score === 'good') session.good = (session.good || 0) + 1;
+    else if (score === 'mwah') session.mwah = (session.mwah || 0) + 1;
+    else session.bad = (session.bad || 0) + 1;
+  }
+
+  // Streak bijwerken (eerste beoordeling van de dag)
+  updateStreak();
+
+  saveData();
+  if (session && session.type === 'super') saveSuperSession();
+
+  // Visual feedback
+  const swipeArea = document.getElementById('card-swipe-area');
+  swipeArea.classList.add(score === 'bad' ? 'swiping-left' : 'swiping-right');
+  setTimeout(() => {
+    swipeArea.classList.remove('swiping-left', 'swiping-right');
+    session.index++;
+    showCurrentCard();
+  }, 200);
+}
+
+function showSessionDone() {
+  document.getElementById('card-swipe-area').classList.add('hidden');
+  document.getElementById('flip-area').classList.add('hidden');
+  document.getElementById('rating-area').classList.add('hidden');
+  document.getElementById('session-done').classList.remove('hidden');
+
+  const type = session.type;
+  const msgs = {
+    super: `${session.queue.length} kaarten doorlopen. Tot de volgende keer!`,
+    bad:   "Alle Slecht-kaarten beoordeeld. Goed gedaan!",
+    mwah:  "Alle Mwah-kaarten beoordeeld. Goed gedaan!",
+    good:  "Alle Goed-kaarten beoordeeld. Ter herhaling!",
+    new:   "Alle nog-te-doen kaarten beoordeeld voor het eerst!"
+  };
+  document.getElementById('session-done-msg').textContent = msgs[type] || `${session.queue.length} kaarten doorlopen.`;
+}
+
+function backToDashboard() {
+  showDashboard();
+}
+
+// =====================================================================
+// CARD HELPERS
+// =====================================================================
+function getCard(id) {
+  return cards.find(c => c.id === id) || null;
+}
+
+function updateLastReviewed(card) {
+  const el = document.getElementById('last-reviewed-display');
+  if (!card.lastReviewed) {
+    el.textContent = "Nog nooit beoordeeld";
+  } else {
+    const d = new Date(card.lastReviewed);
+    el.textContent = `Laatste beoordeling: ${d.toLocaleString('nl-NL', {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    })}`;
+  }
+}
+
+function updateCardStats(card) {
+  document.getElementById('stat-good').textContent    = card.goodCount;
+  document.getElementById('stat-mwah').textContent    = card.mwahCount;
+  document.getElementById('stat-bad').textContent     = card.badCount;
+  document.getElementById('stat-reviews').textContent = card.reviews;
+}
+
+function resetCurrentCardStats() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  if (!confirm(`Tellers resetten voor kaart ${card.id}?\n\nDit reset Goed/Mwah/Slecht tellers en het aantal beoordelingen. Lastescore en datum blijven bewaard.`)) return;
+  card.goodCount = 0;
+  card.mwahCount = 0;
+  card.badCount  = 0;
+  card.reviews   = 0;
+  saveData();
+  updateCardStats(card);
+  showToast("Tellers gereset voor kaart " + card.id);
+}
+
+// =====================================================================
+// SWIPE GESTURES
+// =====================================================================
+(function initSwipe() {
+  let startX, startY, startTime;
+  const area = () => document.getElementById('card-swipe-area');
+
+  function onTouchStart(e) {
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; startTime = Date.now();
+  }
+
+  function onTouchEnd(e) {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const dt = Date.now() - startTime;
+    const isHorizSwipe = Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 60 && dt < 400;
+    const isTap = Math.abs(dx) < 15 && Math.abs(dy) < 15 && dt < 300;
+
+    // Naslag screen swipe
+    const nalasVisible = !document.getElementById('screen-naslag').classList.contains('hidden');
+    if (nalasVisible && nalasSession && isHorizSwipe) {
+      if (dx < 0) nalasNext(); else nalasPrev();
+      return;
+    }
+
+    if (!session || session.index >= session.queue.length) return;
+
+    // Only handle if back is showing (rating area visible)
+    const ratingVisible = !document.getElementById('rating-area').classList.contains('hidden');
+    const frontVisible  = !document.getElementById('view-front').classList.contains('hidden');
+
+    if (isHorizSwipe && ratingVisible) {
+      if (dx < 0) rateAndNext('bad');
+      else rateAndNext('good');
+    } else if (isHorizSwipe && frontVisible) {
+      if (dx > 0) {
+        // Swipe rechts op voorzijde = terug naar vorige kaart
+        if (session.index > 0) {
+          session.index--;
+          showCurrentCard();
+        }
+      }
+      // Swipe links op voorzijde = overslaan (geen beoordeling)
+      else {
+        session.index++;
+        showCurrentCard();
+      }
+    } else if (isTap && frontVisible) {
+      flipCard();
+    }
+  }
+
+  document.addEventListener('touchstart', onTouchStart, { passive: true });
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
+})();
+
+// =====================================================================
+// ADD / EDIT CARD MODAL
+// =====================================================================
+function showAddModal() {
+  document.getElementById('modal-edit-id').value = '';
+  document.getElementById('modal-card-title').textContent = 'Nieuwe flashcard toevoegen';
+  document.getElementById('modal-card-subtitle').textContent = 'Voeg een nieuwe kaart toe aan alle studiecycli.';
+  document.getElementById('card-keywords').value = '';
+  resetPreview('front'); resetPreview('back');
+  document.getElementById('modal-card').classList.remove('hidden');
+}
+
+function showEditModal() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+
+  document.getElementById('modal-edit-id').value = card.id;
+  document.getElementById('modal-card-title').textContent = `Kaart ${card.id} aanpassen`;
+  const updatedLabel = card.imageUpdatedAt
+    ? `Afbeelding laatst gewijzigd: ${new Date(card.imageUpdatedAt).toLocaleString('nl-NL', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}`
+    : 'Afbeelding nog niet handmatig gewijzigd.';
+  document.getElementById('modal-card-subtitle').textContent =
+    `Upload nieuwe afbeelding(en). Scores en geschiedenis blijven bewaard. ${updatedLabel}`;
+
+  document.getElementById('card-keywords').value = card.keywords || '';
+  setPreview('front', card.front);
+  setPreview('back', card.back);
+  document.getElementById('modal-card').classList.remove('hidden');
+}
+
+function hideCardModal() {
+  document.getElementById('modal-card').classList.add('hidden');
+}
+
+function previewImage(side, input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => setPreview(side, e.target.result);
+  reader.readAsDataURL(input.files[0]);
+}
+
+function setPreview(side, src) {
+  const img = document.getElementById(`preview-${side}`);
+  const lbl = document.getElementById(`preview-${side}-label`);
+  img.src = src;
+  img.classList.remove('hidden');
+  lbl.textContent = 'Tik om te wijzigen';
+}
+
+function resetPreview(side) {
+  const img = document.getElementById(`preview-${side}`);
+  const lbl = document.getElementById(`preview-${side}-label`);
+  img.src = ''; img.classList.add('hidden');
+  lbl.textContent = 'Tik om afbeelding te kiezen';
+  document.getElementById(`upload-${side}`).value = '';
+}
+
+function saveCard() {
+  const editId    = document.getElementById('modal-edit-id').value;
+  const frontFile = document.getElementById('upload-front').files[0];
+  const backFile  = document.getElementById('upload-back').files[0];
+  const kw        = document.getElementById('card-keywords').value.trim().toUpperCase();
+
+  if (editId) {
+    const card = getCard(editId);
+    if (!card) { showToast("Kaart niet gevonden"); return; }
+    card.keywords = kw;
+
+    const apply = () => {
+      saveData();
+      hideCardModal();
+      showToast(`Kaart ${editId} opgeslagen!`);
+      if (session) updateCardStats(card);
+      reindexCard(card); // Update OCR zoekindex automatisch
+    };
+
+    if (frontFile && backFile) {
+      readFile(frontFile, fSrc => readFile(backFile, bSrc => {
+        card.front = fSrc; card.back = bSrc; card.imageUpdatedAt = new Date().toISOString(); apply();
+      }));
+    } else if (frontFile) {
+      readFile(frontFile, src => { card.front = src; card.imageUpdatedAt = new Date().toISOString(); apply(); });
+    } else if (backFile) {
+      readFile(backFile, src => { card.back = src; card.imageUpdatedAt = new Date().toISOString(); apply(); });
+    } else {
+      apply(); // Only keywords updated — no new images
+    }
+  } else {
+    if (!frontFile || !backFile) {
+      showToast("Upload zowel voor- als achterzijde voor een nieuwe kaart.");
+      return;
+    }
+    readFile(frontFile, fSrc => readFile(backFile, bSrc => {
+      const customIds = cards.filter(c => c.id.startsWith('custom-')).map(c => parseInt(c.id.split('-')[1]) || 0);
+      const nextNum = customIds.length > 0 ? Math.max(...customIds) + 1 : 1;
+      const newId = `custom-${nextNum}`;
+      const newCard = makeBlankCard(newId, fSrc, bSrc);
+      newCard.custom = true;
+      newCard.keywords = kw;
+      newCard.imageUpdatedAt = new Date().toISOString();
+      cards.push(newCard);
+      saveData();
+      hideCardModal();
+      updateDashboard();
+      showToast(`Kaart ${newId} toegevoegd!`);
+      reindexCard(newCard); // Automatisch indexeren voor Naslag
+    }));
+  }
+}
+
+function readFile(file, callback) {
+  const reader = new FileReader();
+  reader.onload = e => callback(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+// =====================================================================
+// SUPERRESET
+// =====================================================================
+function initSuperReset() {
+  document.getElementById('reset-scores').checked   = true;
+  document.getElementById('reset-counters').checked = true;
+  document.getElementById('reset-history').checked  = true;
+  document.getElementById('reset-images').checked   = false;
+  document.getElementById('reset-custom').checked   = false;
+  document.getElementById('reset-confirm-input').value = '';
+  document.getElementById('reset-step-1').classList.remove('hidden');
+  document.getElementById('reset-step-2').classList.add('hidden');
+  document.getElementById('modal-reset').classList.remove('hidden');
+}
+
+function hideResetModal() {
+  document.getElementById('modal-reset').classList.add('hidden');
+}
+
+// =====================================================================
+// INFO / CHANGELOG MODAL
+// =====================================================================
+function showInfoModal() {
+  const el = document.getElementById('info-current-version');
+  if (el) el.textContent = 'v' + APP_VERSION;
+  document.getElementById('modal-info').classList.remove('hidden');
+}
+
+function hideInfoModal() {
+  document.getElementById('modal-info').classList.add('hidden');
+}
+
+function resetGoBack() {
+  document.getElementById('reset-step-1').classList.remove('hidden');
+  document.getElementById('reset-step-2').classList.add('hidden');
+}
+
+function getResetOptions() {
+  return {
+    scores:   document.getElementById('reset-scores').checked,
+    counters: document.getElementById('reset-counters').checked,
+    history:  document.getElementById('reset-history').checked,
+    images:   document.getElementById('reset-images').checked,
+    custom:   document.getElementById('reset-custom').checked,
+  };
+}
+
+function resetStep2() {
+  const opts = getResetOptions();
+  if (!opts.scores && !opts.counters && !opts.history && !opts.images && !opts.custom) {
+    showToast("Selecteer minimaal één optie.");
+    return;
+  }
+  const list = document.getElementById('reset-confirm-list');
+  list.innerHTML = '';
+  const items = [];
+  if (opts.scores)   items.push('Alle scores (Goed / Mwah / Slecht)');
+  if (opts.counters) items.push('Alle tellers per kaart');
+  if (opts.history)  items.push('Beoordelingshistorie (datum, intervallen, totaal)');
+  if (opts.images)   items.push('Aangepaste afbeeldingen (terugzetten naar origineel)');
+  if (opts.custom)   items.push('Handmatig toegevoegde kaarten (permanent verwijderd)');
+  items.forEach(txt => {
+    const li = document.createElement('li');
+    li.textContent = txt;
+    list.appendChild(li);
+  });
+  document.getElementById('reset-confirm-input').value = '';
+  document.getElementById('reset-step-1').classList.add('hidden');
+  document.getElementById('reset-step-2').classList.remove('hidden');
+}
+
+async function executeReset() {
+  const input = document.getElementById('reset-confirm-input').value.trim().toUpperCase();
+  if (input !== 'RESET') { showToast("Typ 'RESET' om te bevestigen."); return; }
+
+  const opts = getResetOptions();
+
+  // Remove custom cards if selected
+  if (opts.custom) {
+    for (let i = cards.length - 1; i >= 0; i--) {
+      if (cards[i].custom && cards[i].id.startsWith('custom-')) cards.splice(i, 1);
+    }
+  }
+
+  // Apply selective reset per card
+  cards.forEach(card => {
+    if (opts.scores)   { card.lastScore = null; }
+    if (opts.counters) { card.goodCount = 0; card.mwahCount = 0; card.badCount = 0; }
+    if (opts.history)  { card.lastReviewed = null; card.reviews = 0; card.nextDue = 0; }
+    if (opts.images && card.imageUpdatedAt && !card.custom) {
+      const [pp, c] = card.id.split('-');
+      card.front = `flashcards/front_${pp}_${c}.png`;
+      card.back  = `flashcards/back_${pp}_${c}.png`;
+      card.imageUpdatedAt = null;
+    }
+  });
+
+  // Sla resetAt op — syncWithServer gebruikt dit om serverdata van VÓÓR de reset te negeren
+  localStorage.setItem(RESET_AT_KEY, Date.now().toString());
+
+  // Save locally (bypass schedulePush to control timing)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: APP_VERSION, cards }));
+
+  hideResetModal();
+  updateDashboard();
+  showToast("Reset uitgevoerd.");
+
+  // Push reset state to server immediately — overwrites old data so next sync doesn't pull it back
+  if (getSyncUrl() && navigator.onLine) {
+    updateSyncUI('syncing');
+    await pushToServer(false);
+  }
+}
+
+// =====================================================================
+// EXPORT / IMPORT
+// =====================================================================
+function exportData() {
+  const payload = {
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    cards: cards.map(c => ({
+      id: c.id,
+      goodCount: c.goodCount,
+      mwahCount: c.mwahCount,
+      badCount: c.badCount,
+      lastScore: c.lastScore,
+      lastReviewed: c.lastReviewed,
+      reviews: c.reviews,
+      nextDue: c.nextDue,
+      custom: c.custom,
+      // Only store front/back if custom (base64), not for file-based cards
+      front: c.custom ? c.front : undefined,
+      back:  c.custom ? c.back  : undefined
+    }))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const date = new Date().toISOString().slice(0,10);
+  a.download = `b737_backup_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Backup opgeslagen!");
+}
+
+function triggerImport() {
+  document.getElementById('import-file-input').click();
+}
+
+function doImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.cards || !Array.isArray(data.cards)) throw new Error("Ongeldig formaat");
+
+      // Merge: update scores/stats from backup into current cards, add custom cards
+      let updated = 0, added = 0;
+      data.cards.forEach(imported => {
+        const existing = getCard(imported.id);
+        if (existing) {
+          // Restore stats only (don't overwrite images for file-based cards)
+          existing.goodCount    = imported.goodCount    || 0;
+          existing.mwahCount    = imported.mwahCount    || 0;
+          existing.badCount     = imported.badCount     || 0;
+          existing.lastScore    = imported.lastScore    || null;
+          existing.lastReviewed = imported.lastReviewed || null;
+          existing.reviews      = imported.reviews      || 0;
+          existing.nextDue      = imported.nextDue      || 0;
+          updated++;
+        } else if (imported.custom && imported.front && imported.back) {
+          // Add custom card
+          const newCard = makeBlankCard(imported.id, imported.front, imported.back);
+          newCard.custom = true;
+          newCard.goodCount    = imported.goodCount    || 0;
+          newCard.mwahCount    = imported.mwahCount    || 0;
+          newCard.badCount     = imported.badCount     || 0;
+          newCard.lastScore    = imported.lastScore    || null;
+          newCard.lastReviewed = imported.lastReviewed || null;
+          newCard.reviews      = imported.reviews      || 0;
+          newCard.nextDue      = imported.nextDue      || 0;
+          cards.push(newCard);
+          added++;
+        }
+      });
+
+      saveData();
+      updateDashboard();
+      showToast(`Import geslaagd: ${updated} kaarten bijgewerkt, ${added} toegevoegd.`);
+    } catch(err) {
+      showToast("Importfout: " + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// =====================================================================
+// TOAST NOTIFICATION
+// =====================================================================
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(10px)';
+  }, 2500);
+}
+
+// =====================================================================
+// PWA MANIFEST (inline)
+// manifest.json en icons/ zijn statische bestanden — geen JS setup nodig
+
+// =====================================================================
+// SERVICE WORKER (voor offline support)
+// =====================================================================
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  // Onthoud of er al een actieve SW is vóór registratie
+  const hadController = !!navigator.serviceWorker.controller;
+
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  // Zodra een nieuwe SW de controle overneemt: automatisch herladen
+  // → de app krijgt dan direct de nieuwe versie, zonder handmatige cache-actie
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloading) {
+      reloading = true;
+      window.location.reload();
+    }
+  });
+}
+
+// =====================================================================
+// SYNC (Google Apps Script)
+// =====================================================================
+const SYNC_URL_KEY   = 'b737_sync_url';
+const DEVICE_ID_KEY  = 'b737_device_id';
+const RESET_AT_KEY   = 'b737_reset_at'; // timestamp van laatste SUPERRESET
+const STREAK_KEY     = 'b737_streak';   // { date: 'YYYY-MM-DD', count: N }
+const PIN_HASH_KEY    = 'b737_pin_hash';    // SHA-256 hash van PIN
+const PIN_CHANGED_KEY = 'b737_pin_changed'; // timestamp laatste PIN-wijziging (voor sync)
+const PIN_TRIES_KEY   = 'b737_pin_tries';   // mislukte pogingen
+const PIN_LOCK_KEY    = 'b737_pin_lock';    // lockout vervaltijd
+const PIN_UNLOCK_KEY  = 'b737_pin_unlock';  // vrijgegeven tot (timestamp)
+const PIN_SESSION_MS  = 4 * 60 * 60 * 1000; // 4 uur
+const SUPER_SESSION_KEY = 'b737_super_session';
+const SYNC_TOKEN     = 'b737-davey-transavia-2026';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnC_pxvh0m576KbLyNKaxcoZK7WF3PqsaUvz7KYYMA3pTOZaYivB1jVZsxNZco99_L/exec';
+let lastSyncTime     = 0;
+let pushTimer        = null;
+let _skipPush        = false; // prevent push during pull-merge-save
+
+function getSyncUrl() {
+  // Pre-configure with the Apps Script URL if not yet set
+  const stored = localStorage.getItem(SYNC_URL_KEY);
+  if (!stored) localStorage.setItem(SYNC_URL_KEY, APPS_SCRIPT_URL);
+  return localStorage.getItem(SYNC_URL_KEY) || '';
+}
+
+function buildSyncUrl(base) {
+  // Append token — works for both GET and POST
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token=${SYNC_TOKEN}`;
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) { id = 'dev_' + Math.random().toString(36).substr(2, 9); localStorage.setItem(DEVICE_ID_KEY, id); }
+  return id;
+}
+
+function showSyncModal() {
+  document.getElementById('sync-url-input').value = getSyncUrl();
+  document.getElementById('sync-test-result').textContent = '\u00a0';
+  document.getElementById('modal-sync').classList.remove('hidden');
+}
+
+function hideSyncModal() {
+  document.getElementById('modal-sync').classList.add('hidden');
+}
+
+function saveSyncSettings() {
+  const url = document.getElementById('sync-url-input').value.trim();
+  localStorage.setItem(SYNC_URL_KEY, url);
+  hideSyncModal();
+  showToast(url ? 'Sync ingesteld — bezig met synchroniseren…' : 'Sync uitgeschakeld');
+  if (url) syncWithServer(); else updateSyncUI('none');
+}
+
+async function testSyncConnection() {
+  const url = document.getElementById('sync-url-input').value.trim();
+  const el  = document.getElementById('sync-test-result');
+  if (!url) { el.textContent = '⚠️ Vul eerst een URL in'; el.className = 'text-xs text-amber-400 mt-2'; return; }
+  el.textContent = '⏳ Verbinding testen…'; el.className = 'text-xs text-zinc-400 mt-2';
+  try {
+    const res = await fetch(buildSyncUrl(url));
+    if (res.ok) { el.textContent = '✅ Verbinding geslaagd!'; el.className = 'text-xs text-emerald-400 mt-2'; }
+    else        { el.textContent = `❌ Fout: HTTP ${res.status}`; el.className = 'text-xs text-red-400 mt-2'; }
+  } catch(e) {
+    el.textContent = '❌ Geen verbinding. Controleer de URL.'; el.className = 'text-xs text-red-400 mt-2';
+  }
+}
+
+function updateSyncUI(state, msg) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-status-text');
+  const btn = document.getElementById('btn-sync-now');
+  const dots = { none:'bg-zinc-600', syncing:'bg-amber-400', ok:'bg-emerald-500', error:'bg-red-500', offline:'bg-zinc-500' };
+  dot.className = `w-2.5 h-2.5 rounded-full flex-shrink-0 ${dots[state] || dots.none}`;
+  if (msg) { txt.textContent = msg; }
+  else {
+    const msgs = { none:'Sync niet ingesteld', syncing:'Synchroniseren…', ok:'Gesynchroniseerd', error:'Sync mislukt', offline:'Offline — wacht op verbinding' };
+    txt.textContent = msgs[state] || 'Sync niet ingesteld';
+  }
+  // Show sync-now button only when sync is configured and not currently syncing
+  if (btn) btn.classList.toggle('hidden', state === 'none' || state === 'syncing');
+}
+
+function manualSync() {
+  if (!navigator.onLine) { showToast("Geen internetverbinding."); return; }
+  if (!getSyncUrl())      { showToast("Sync nog niet ingesteld."); return; }
+  syncWithServer();
+  showToast("Synchroniseren…");
+}
+
+async function checkForUpdate() {
+  if (!('serviceWorker' in navigator)) { showToast("Service worker niet beschikbaar."); return; }
+  const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+  if (!reg) { showToast("App niet als PWA geïnstalleerd."); return; }
+  showToast("Controleren op update…");
+  await reg.update();
+  if (reg.waiting) {
+    showToast("Update gevonden — app herlaadt nu…");
+    setTimeout(() => reg.waiting.postMessage({ type: 'SKIP_WAITING' }), 800);
+  } else if (reg.installing) {
+    showToast("Update wordt geïnstalleerd — app herlaadt straks automatisch.");
+  } else {
+    showToast(`App is up-to-date (v${APP_VERSION}).`);
+  }
+}
+
+function schedulePush() {
+  if (_skipPush) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => pushToServer(false), 4000);
+}
+
+async function syncWithServer() {
+  const url = getSyncUrl();
+  if (!url) { updateSyncUI('none'); return; }
+  if (!navigator.onLine) { updateSyncUI('offline'); return; }
+
+  updateSyncUI('syncing');
+  lastSyncTime = Date.now();
+
+  try {
+    const res = await fetch(buildSyncUrl(url));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (data.cards && Array.isArray(data.cards)) {
+      let changed = false;
+      const staleUrls = [];
+      const resetAt = parseInt(localStorage.getItem(RESET_AT_KEY) || '0');
+      data.cards.forEach(remote => {
+        // Speciale PIN-hash kaart — verwerk apart, niet als echte flashcard
+        if (remote.id === '_pin_hash') {
+          if (remote.keywords) {
+            const remoteChangedAt = remote.lastReviewed ? new Date(remote.lastReviewed).getTime() : 0;
+            const localChangedAt  = parseInt(localStorage.getItem(PIN_CHANGED_KEY) || '0');
+            // Server-hash wint als deze nieuwer is (nieuwste PIN-wijziging geldt)
+            if (remoteChangedAt > localChangedAt) {
+              localStorage.setItem(PIN_HASH_KEY,    remote.keywords);
+              localStorage.setItem(PIN_CHANGED_KEY, String(remoteChangedAt));
+            }
+          }
+          return; // niet als kaart verwerken
+        }
+        // Speciale OCR-index kaart — verwerk apart
+        if (remote.id === '_ocr_index') {
+          if (remote.front) { // OCR-data zit in het 'front' veld als JSON-string
+            try {
+              const remoteOcr = JSON.parse(remote.front);
+              let ocrChanged = false;
+              // Merge per kaart: bewaar de meest recente OCR per kaart (op basis van imageUpdatedAt)
+              Object.entries(remoteOcr).forEach(([id, entry]) => {
+                const existing = nalasIndex[id];
+                const eAt = existing && existing.at ? new Date(existing.at).getTime() : 0;
+                const rAt = entry.at ? new Date(entry.at).getTime() : 0;
+                if (!existing || rAt > eAt) { nalasIndex[id] = entry; ocrChanged = true; }
+              });
+              if (ocrChanged) { saveNalasIndex(); updateNalasHint(); }
+            } catch(e) {}
+          }
+          return;
+        }
+        const local = getCard(remote.id);
+        if (local) {
+          const lt = local.lastReviewed  ? new Date(local.lastReviewed).getTime()  : 0;
+          const rt = remote.lastReviewed ? new Date(remote.lastReviewed).getTime() : 0;
+          // Remote wint alleen als het NIEUWER is dan zowel lokaal als de laatste reset
+          // Zo kan een SUPERRESET nooit worden teruggedraaid door een volgende sync
+          if (rt > lt && rt > resetAt) {
+            local.goodCount    = remote.goodCount    || 0;
+            local.mwahCount    = remote.mwahCount    || 0;
+            local.badCount     = remote.badCount     || 0;
+            local.lastScore    = remote.lastScore    || null;
+            local.lastReviewed = remote.lastReviewed || null;
+            local.reviews      = remote.reviews      || 0;
+            // nextDue herberekenen op basis van lokale seenCount
+            // zodat het interval ook op dit apparaat klopt
+            if (local.lastScore) {
+              local.nextDue = getSeenCount() + cardInterval(local.lastScore, local.goodCount);
+            } else {
+              local.nextDue = 0;
+            }
+            changed = true;
+          }
+          // Check if remote has a newer image update
+          const li = local.imageUpdatedAt  ? new Date(local.imageUpdatedAt).getTime()  : 0;
+          const ri = remote.imageUpdatedAt ? new Date(remote.imageUpdatedAt).getTime() : 0;
+          if (ri > li) {
+            local.imageUpdatedAt = remote.imageUpdatedAt;
+            if (remote.front) local.front = remote.front;
+            if (remote.back)  local.back  = remote.back;
+            if (!local.front.startsWith('data:')) staleUrls.push(local.front);
+            if (!local.back.startsWith('data:'))  staleUrls.push(local.back);
+            changed = true;
+          }
+          // Merge keywords (take non-empty, prefer remote if both non-empty)
+          if (remote.keywords && remote.keywords !== local.keywords) {
+            local.keywords = remote.keywords;
+            changed = true;
+          }
+        } else if (remote.custom && remote.front && remote.back) {
+          const nc = makeBlankCard(remote.id, remote.front, remote.back);
+          Object.assign(nc, {
+            custom: true, goodCount: remote.goodCount||0, mwahCount: remote.mwahCount||0,
+            badCount: remote.badCount||0, lastScore: remote.lastScore||null,
+            lastReviewed: remote.lastReviewed||null, reviews: remote.reviews||0, nextDue: remote.nextDue||0,
+            imageUpdatedAt: remote.imageUpdatedAt||null, keywords: remote.keywords||''
+          });
+          cards.push(nc);
+          changed = true;
+        }
+      });
+      // Tell service worker to refresh any stale cached images
+      if (staleUrls.length > 0 && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'REFRESH_IMAGES', urls: staleUrls });
+      }
+      if (changed) {
+        _skipPush = true;
+        saveData();
+        _skipPush = false;
+        updateDashboard();
+      }
+    }
+
+    const t = new Date().toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+    updateSyncUI('ok', `Gesynchroniseerd om ${t}`);
+    // Push merged local data to server
+    await pushToServer(true);
+
+  } catch(e) {
+    console.warn('Sync fout:', e);
+    updateSyncUI('error', 'Sync mislukt — probeer later opnieuw');
+  }
+}
+
+async function pushToServer(silent = false) {
+  const url = getSyncUrl();
+  if (!url || !navigator.onLine) return;
+  // Na een SUPERRESET: stuur kaarten die sindsdien NIET beoordeeld zijn met resetAt als
+  // lastReviewed, zodat de server de oude data overschrijft (resetAt > pre-reset timestamps).
+  // Lokaal blijft lastReviewed = null correct; dit is alleen de server-payload.
+  const resetAt = parseInt(localStorage.getItem(RESET_AT_KEY) || '0');
+  const resetAtISO = resetAt ? new Date(resetAt).toISOString() : null;
+  const payload = {
+    version: APP_VERSION,
+    syncedAt: new Date().toISOString(),
+    deviceId: getDeviceId(),
+    cards: (() => {
+      const cardList = cards.map(c => {
+        const lt = c.lastReviewed ? new Date(c.lastReviewed).getTime() : 0;
+        const serverLastReviewed = (resetAtISO && lt <= resetAt) ? resetAtISO : c.lastReviewed;
+        return {
+          id: c.id, goodCount: c.goodCount, mwahCount: c.mwahCount, badCount: c.badCount,
+          lastScore: c.lastScore, lastReviewed: serverLastReviewed, reviews: c.reviews, nextDue: c.nextDue,
+          custom: c.custom || false,
+          keywords: c.keywords || '',
+          imageUpdatedAt: c.imageUpdatedAt || null,
+          front: c.custom ? c.front : undefined,
+          back:  c.custom ? c.back  : undefined
+        };
+      });
+      // Voeg PIN-hash toe als speciale kaart zodat alle apparaten dezelfde PIN gebruiken
+      const pinHash    = getLocalPinHash();
+      const pinChanged = parseInt(localStorage.getItem(PIN_CHANGED_KEY) || '0');
+      if (pinHash) {
+        cardList.push({
+          id: '_pin_hash', keywords: pinHash,
+          lastReviewed: new Date(pinChanged).toISOString(),
+          goodCount: 0, mwahCount: 0, badCount: 0,
+          lastScore: null, reviews: 0, nextDue: 0, custom: false
+        });
+      }
+      // Voeg OCR-index toe zodat andere apparaten geen OCR hoeven te draaien
+      // Timestamp = meest recente OCR-run (stabiel, verandert alleen bij nieuwe/gewijzigde kaart)
+      const ocrKeys = Object.keys(nalasIndex);
+      if (ocrKeys.length > 0) {
+        const latestOcrAt = ocrKeys.reduce((max, id) => {
+          const t = nalasIndex[id].at ? new Date(nalasIndex[id].at).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+        const ocrTs = latestOcrAt || Date.now();
+        cardList.push({
+          id: '_ocr_index',
+          front: JSON.stringify(nalasIndex),
+          lastReviewed: new Date(ocrTs).toISOString(),
+          goodCount: 0, mwahCount: 0, badCount: 0,
+          lastScore: null, reviews: 0, nextDue: 0, custom: false,
+          keywords: '', back: undefined, imageUpdatedAt: null
+        });
+      }
+      return cardList;
+    })()
+  };
+  try {
+    // No Content-Type header → avoids CORS preflight with Apps Script
+    await fetch(buildSyncUrl(url), { method: 'POST', body: JSON.stringify(payload) });
+    if (!silent) {
+      const t = new Date().toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+      updateSyncUI('ok', `Gesynchroniseerd om ${t}`);
+    }
+  } catch(e) {
+    if (!silent) updateSyncUI('error', 'Push mislukt');
+    console.warn('Push fout:', e);
+  }
+}
+
+// Sync when coming back online
+window.addEventListener('online',  () => { if (getSyncUrl()) syncWithServer(); });
+
+// Throttled sync when returning to dashboard
+function maybeSyncOnDashboard() {
+  if (!getSyncUrl()) { updateSyncUI('none'); return; }
+  if (Date.now() - lastSyncTime > 90000) syncWithServer(); // only if >90s since last sync
+  else if (!navigator.onLine) updateSyncUI('offline');
+  else {
+    const t = new Date().toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+    updateSyncUI('ok', `Gesynchroniseerd om ${t}`);
+  }
+}
+
+// =====================================================================
+// NASLAG (COCKPIT QUICK REFERENCE)
+// =====================================================================
+let cardMetadata = {}; // { "01-1": { f: ["TEXT A", "TEXT B"], b: ["TEXT C"] } }
+let nalasSession = null; // { query, queue: [{id, priority, matchSide, matchPos}], index }
+
+async function loadMetadata() {
+  try {
+    const res = await fetch('./flashcards/metadata.json');
+    if (res.ok) {
+      cardMetadata = await res.json();
+      const count = Object.keys(cardMetadata).length;
+      const hint = document.getElementById('nalas-hint');
+      if (hint) hint.textContent = `Zoek in ${count} flashcards · trefwoorden worden herkend in alle tekst`;
+    }
+  } catch(e) { /* metadata not yet generated — run app.py first */ }
+}
+
+function showNalasScreen() {
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  document.getElementById('screen-naslag').classList.remove('hidden');
+  document.getElementById('nalas-card-area').classList.add('hidden');
+  document.getElementById('nalas-no-results').classList.add('hidden');
+  const count = Object.keys(cardMetadata).length;
+  const kwCards = cards.filter(c => c.keywords).length;
+  document.getElementById('nalas-hint').textContent = count > 0
+    ? `Zoek in ${count} geïndexeerde kaarten${kwCards > 0 ? ` + ${kwCards} met handmatige trefwoorden` : ''}`
+    : kwCards > 0
+      ? `Zoek in ${kwCards} kaarten met handmatige trefwoorden (voer generate_metadata.py uit voor volledige index)`
+      : 'Zoekindex ontbreekt — voer generate_metadata.py uit met je PDF';
+  setTimeout(() => document.getElementById('nalas-input').focus(), 100);
+}
+
+function searchNalas() {
+  const raw = document.getElementById('nalas-input').value.trim();
+  if (!raw) { showToast("Typ een trefwoord om te zoeken."); return; }
+  const query = raw.toUpperCase();
+
+  const hasMetadata = Object.keys(cardMetadata).length > 0;
+
+  const results = [];
+  for (const card of cards) {
+    // Source priority: PDF metadata (exact) > OCR index (automatic) > manual keywords
+    const meta = cardMetadata[card.id];
+    const ocr  = nalasIndex[card.id];
+
+    let backBlocks  = [];
+    let frontBlocks = [];
+
+    if (meta) {
+      // PDF text extraction — most accurate, preserves block order top→bottom
+      backBlocks  = meta.b || [];
+      frontBlocks = meta.f || [];
+    } else if (ocr) {
+      // Tesseract OCR — split by newline to preserve vertical order
+      backBlocks  = (ocr.b || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+      frontBlocks = (ocr.f || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+    }
+
+    const cardKeywords = (card.keywords || '').toUpperCase();
+
+    let backMatchIdx = -1;
+    for (let i = 0; i < backBlocks.length; i++) {
+      if (matchesWholeWord(backBlocks[i], query)) { backMatchIdx = i; break; }
+    }
+
+    const frontMatch   = frontBlocks.some(t => matchesWholeWord(t, query));
+    const keywordMatch = matchesWholeWord(cardKeywords, query);
+
+    if (backMatchIdx >= 0) {
+      results.push({ id: card.id, priority: backMatchIdx, matchSide: 'back',    matchPos: backMatchIdx + 1 });
+    } else if (frontMatch) {
+      results.push({ id: card.id, priority: 10000,        matchSide: 'front',   matchPos: null });
+    } else if (keywordMatch) {
+      results.push({ id: card.id, priority: 20000,        matchSide: 'keyword', matchPos: null });
+    }
+  }
+
+  results.sort((a, b) => a.priority - b.priority);
+
+  document.getElementById('nalas-hint').classList.add('hidden');
+  document.getElementById('nalas-no-results').classList.add('hidden');
+  document.getElementById('nalas-card-area').classList.add('hidden');
+
+  if (results.length === 0) {
+    const noMeta = !hasMetadata
+      ? ' (Zoekindex ontbreekt — voer generate_metadata.py uit)'
+      : '';
+    document.getElementById('nalas-no-results-label').textContent =
+      `Geen kaarten gevonden voor "${raw}"${noMeta}`;
+    document.getElementById('nalas-no-results').classList.remove('hidden');
+    return;
+  }
+
+  nalasSession = { query: raw, queue: results, index: 0 };
+  document.getElementById('nalas-result-label').textContent =
+    `"${raw}" — ${results.length} kaart${results.length !== 1 ? 'en' : ''} gevonden`;
+  document.getElementById('nalas-card-area').classList.remove('hidden');
+  showNalasCard(0);
+}
+
+function showNalasCard(idx) {
+  if (!nalasSession || idx < 0 || idx >= nalasSession.queue.length) return;
+  nalasSession.index = idx;
+  const entry = nalasSession.queue[idx];
+  const card = getCard(entry.id);
+  if (!card) return;
+
+  document.getElementById('nalas-img-front').src = card.front;
+  document.getElementById('nalas-img-back').src  = card.back;
+  document.getElementById('nalas-card-id-badge').textContent = `Kaart ${card.id}`;
+  document.getElementById('nalas-nav-label').textContent = `${idx + 1} / ${nalasSession.queue.length}`;
+
+  const infoMap = {
+    back:    `Gevonden op achterzijde (regel ${entry.matchPos})`,
+    front:   'Gevonden op voorzijde',
+    keyword: 'Gevonden via handmatig trefwoord'
+  };
+  document.getElementById('nalas-match-info').textContent = infoMap[entry.matchSide] || '';
+
+  document.getElementById('nalas-prev-btn').disabled = idx === 0;
+  document.getElementById('nalas-next-btn').disabled = idx === nalasSession.queue.length - 1;
+}
+
+function nalasNext() {
+  if (!nalasSession || nalasSession.index >= nalasSession.queue.length - 1) return;
+  const area = document.getElementById('nalas-swipe-area');
+  area.classList.add('swiping-left');
+  setTimeout(() => {
+    area.classList.remove('swiping-left');
+    showNalasCard(nalasSession.index + 1);
+  }, 150);
+}
+
+function nalasPrev() {
+  if (!nalasSession || nalasSession.index <= 0) return;
+  const area = document.getElementById('nalas-swipe-area');
+  area.classList.add('swiping-right');
+  setTimeout(() => {
+    area.classList.remove('swiping-right');
+    showNalasCard(nalasSession.index - 1);
+  }, 150);
+}
+
+function clearNalas() {
+  nalasSession = null;
+  document.getElementById('nalas-input').value = '';
+  document.getElementById('nalas-card-area').classList.add('hidden');
+  document.getElementById('nalas-no-results').classList.add('hidden');
+  updateNalasHint();
+  document.getElementById('nalas-input').focus();
+}
+
+// =====================================================================
+// OCR ZOEKINDEX (Tesseract.js — automatisch, volledig offline)
+// =====================================================================
+const NALAS_INDEX_KEY = 'b737_nalas_index';
+const NALAS_OCR_VER = 2;  // bump when cleanOCR changes → triggers per-entry re-OCR (old data kept for offline)
+let nalasIndex   = {};  // { cardId: { f: "TEXT", b: "TEXT", at: ts, _ver: N } }
+let ocrState     = { running: false, done: 0, total: 0 };
+let ocrWorker    = null;
+
+function loadNalasIndex() {
+  try {
+    const stored = localStorage.getItem(NALAS_INDEX_KEY);
+    if (stored) nalasIndex = JSON.parse(stored);
+  } catch(e) { nalasIndex = {}; }
+}
+
+function saveNalasIndex() {
+  try { localStorage.setItem(NALAS_INDEX_KEY, JSON.stringify(nalasIndex)); } catch(e) {}
+}
+
+function updateNalasHint() {
+  const hint = document.getElementById('nalas-hint');
+  if (!hint) return;
+  const idxCount  = Object.keys(nalasIndex).length;
+  const metaCount = Object.keys(cardMetadata).length;
+  const total     = Math.max(idxCount, metaCount);
+  const kwCards   = cards.filter(c => c.keywords).length;
+
+  if (ocrState.running) {
+    hint.textContent = `Zoekindex opbouwen: ${ocrState.done} / ${ocrState.total} kaarten… (achtergrond)`;
+    hint.classList.remove('hidden');
+  } else if (total > 0) {
+    hint.textContent = `Zoek in ${total} flashcards${kwCards > 0 ? ` + ${kwCards} met trefwoorden` : ''}`;
+    hint.classList.remove('hidden');
+  } else {
+    hint.textContent = 'Zoekindex wordt aangemaakt bij eerste gebruik (eenmalig, internet vereist)';
+    hint.classList.remove('hidden');
+  }
+}
+
+async function initNalasSearch() {
+  loadNalasIndex();
+
+  // Determine which cards need (re-)OCR
+  const needOCR = cards.filter(c => {
+    const existing = nalasIndex[c.id];
+    if (!existing) return true;
+    // Re-OCR if image was updated since last OCR
+    if (c.imageUpdatedAt && existing.at !== c.imageUpdatedAt) return true;
+    // Re-OCR if entry was built with old cleanOCR (old data kept for offline use in the meantime)
+    if ((existing._ver || 1) < NALAS_OCR_VER) return true;
+    return false;
+  });
+
+  updateNalasHint();
+  if (needOCR.length === 0) return;
+
+  // Run OCR in background — don't block UI
+  runOCRBackground(needOCR);
+}
+
+async function runOCRBackground(cardsToOCR) {
+  if (ocrState.running) return;
+  if (typeof Tesseract === 'undefined') {
+    // Tesseract.js not loaded (first offline visit before it was cached)
+    const hint = document.getElementById('nalas-hint');
+    if (hint) hint.textContent = 'Zoekindex vereist eenmalig internetverbinding om te worden aangemaakt.';
+    return;
+  }
+
+  ocrState.running = true;
+  ocrState.done    = 0;
+  ocrState.total   = cardsToOCR.length;
+  updateNalasHint();
+
+  try {
+    ocrWorker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+
+    // Process back sides first (answers = most useful for cockpit search)
+    for (const card of cardsToOCR) {
+      try {
+        const backText = await ocrWorker.recognize(card.back).then(r => cleanOCR(r.data.text));
+        if (!nalasIndex[card.id]) nalasIndex[card.id] = { f: '', b: '', at: null };
+        nalasIndex[card.id].b    = backText;
+        nalasIndex[card.id].at   = card.imageUpdatedAt || null;
+        nalasIndex[card.id]._ver = NALAS_OCR_VER;
+      } catch(e) { /* skip failed card */ }
+
+      ocrState.done++;
+      if (ocrState.done % 5 === 0) { saveNalasIndex(); updateNalasHint(); }
+      await new Promise(r => setTimeout(r, 10)); // yield to UI
+    }
+
+    // Then process front sides
+    ocrState.done = 0;
+    for (const card of cardsToOCR) {
+      try {
+        const frontText = await ocrWorker.recognize(card.front).then(r => cleanOCR(r.data.text));
+        if (nalasIndex[card.id]) nalasIndex[card.id].f = frontText;
+      } catch(e) { /* skip */ }
+
+      ocrState.done++;
+      if (ocrState.done % 5 === 0) { saveNalasIndex(); updateNalasHint(); }
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    await ocrWorker.terminate();
+    ocrWorker = null;
+  } catch(e) {
+    console.warn('OCR fout:', e);
+  }
+
+  ocrState.running = false;
+  saveNalasIndex();
+  updateNalasHint();
+}
+
+function cleanOCR(text) {
+  // Normalise per line — preserve \n so vertical position is kept for priority
+  return text.toUpperCase()
+    .split('\n')
+    .map(line => line.replace(/[^\w\s\-\.\/]/g, ' ').replace(/ +/g, ' ').trim())
+    .filter(line => line.length > 1)
+    .join('\n');
+}
+
+function matchesWholeWord(text, query) {
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('\\b' + escaped + '\\b').test(text);
+}
+
+// Re-OCR a single card immediately (called after edit/add)
+async function reindexCard(card) {
+  if (typeof Tesseract === 'undefined') return;
+  try {
+    const w = ocrWorker || await Tesseract.createWorker('eng', 1, { logger: () => {} });
+    const [frontText, backText] = await Promise.all([
+      w.recognize(card.front).then(r => cleanOCR(r.data.text)),
+      w.recognize(card.back).then(r => cleanOCR(r.data.text))
+    ]);
+    nalasIndex[card.id] = { f: frontText, b: backText, at: card.imageUpdatedAt || null, _ver: NALAS_OCR_VER };
+    saveNalasIndex();
+    if (!ocrWorker) await w.terminate();
+  } catch(e) { console.warn('Reindex fout:', e); }
+}
+
+// =====================================================================
+// BOOT
+// =====================================================================
+loadData();
+loadMetadata();
+initNalasSearch(); // start OCR in background (no await — non-blocking)
+initPin();        // toon PIN-scherm (showDashboard wordt aangeroepen na correcte PIN)
+// Initial sync on load (na PIN — showDashboard doet dit via maybeSyncOnDashboard)
+</script>
+
+<!-- ===================== MODAL: MARKEER KAART ===================== -->
+<div id="modal-flag" class="modal-backdrop hidden">
+  <div class="modal-box max-w-sm">
+    <h3 class="text-xl font-bold mb-2 text-amber-300">🔖 Kaart markeren</h3>
+    <p class="text-sm text-zinc-500 mb-4">Voeg een opmerking toe om deze kaart later te verbeteren.</p>
+    <textarea id="flag-note-input" placeholder="Bijv: afbeelding onduidelijk, tekst aanvullen..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 resize-none h-28 mb-5"></textarea>
+    <div class="flex gap-3">
+      <button onclick="hideFlagModal()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">Annuleren</button>
+      <button onclick="saveFlagNote()" class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 rounded-2xl font-bold text-white">Markeren</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

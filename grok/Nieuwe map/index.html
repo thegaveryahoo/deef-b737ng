@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>B737NG-800 Flashcard Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="data:application/json,{}">
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .card-img { max-height: 68vh; object-fit: contain; box-shadow: 0 15px 40px rgba(0,0,0,0.5); border-radius: 24px; }
+        .big-btn { padding: 1.25rem; font-size: 1.35rem; font-weight: 700; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen pb-12">
+
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold tracking-tight">B737NG-800 NNC Trainer</h1>
+            <div class="flex gap-3">
+                <button onclick="exportData()" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">Export</button>
+                <button onclick="importData()" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">Import</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <div class="bg-zinc-900 p-6 rounded-3xl text-center">
+                <div class="text-6xl font-bold text-gray-400" id="not-count">0</div>
+                <div class="text-zinc-400 mt-1">Nog niet gedaan</div>
+            </div>
+            <div class="bg-zinc-900 p-6 rounded-3xl text-center">
+                <div class="text-6xl font-bold text-red-500" id="bad-count">0</div>
+                <div class="text-zinc-400 mt-1">Bad</div>
+            </div>
+            <div class="bg-zinc-900 p-6 rounded-3xl text-center">
+                <div class="text-6xl font-bold text-amber-500" id="mwah-count">0</div>
+                <div class="text-zinc-400 mt-1">Mwah</div>
+            </div>
+            <div class="bg-zinc-900 p-6 rounded-3xl text-center">
+                <div class="text-6xl font-bold text-emerald-500" id="good-count">0</div>
+                <div class="text-zinc-400 mt-1">Good</div>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 rounded-3xl p-6 mb-8">
+            <div class="flex justify-between text-sm mb-2">
+                <span>Voortgang</span>
+                <span id="progress-text">0 / 190</span>
+            </div>
+            <div class="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-emerald-500 w-0 transition-all duration-500"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button onclick="startSession('super')" class="big-btn bg-emerald-600 hover:bg-emerald-500">🚀 Start Supercyclus</button>
+            <button onclick="startSession('bad')" class="big-btn bg-red-600 hover:bg-red-500">🔴 Alleen Bad kaarten</button>
+            <button onclick="startSession('mwah')" class="big-btn bg-amber-500 hover:bg-amber-400">🟠 Alleen Mwah kaarten</button>
+            <button onclick="startSession('good')" class="big-btn bg-emerald-600 hover:bg-emerald-500">🟢 Alleen Good kaarten</button>
+            <button onclick="startSession('new')" class="big-btn bg-zinc-700 hover:bg-zinc-600">📌 Nog niet beoordeeld</button>
+            <button onclick="showAddModal()" class="big-btn bg-zinc-700 hover:bg-zinc-600">➕ Nieuwe flashcard toevoegen</button>
+        </div>
+
+        <button onclick="confirmSuperReset()" class="mt-10 w-full py-5 bg-red-700 hover:bg-red-600 rounded-3xl text-xl font-bold">SUPERRESET (alles wissen)</button>
+    </div>
+
+    <!-- STUDY SCREEN -->
+    <div id="study" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+            <div class="text-2xl font-medium" id="card-header">Kaart <span id="card-id">001</span></div>
+            <button onclick="backToDashboard()" class="text-zinc-400 hover:text-white">← Terug</button>
+        </div>
+
+        <div class="text-center">
+            <img id="card-img" class="card-img mx-auto" alt="Flashcard">
+            <div class="mt-4 text-sm text-zinc-400" id="last-reviewed">Laatst beoordeeld: nooit</div>
+        </div>
+
+        <div class="flex justify-center gap-6 mt-10">
+            <button onclick="flipCard()" class="px-12 py-5 bg-white text-zinc-950 rounded-3xl text-2xl font-semibold">Flip kaart</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mt-12">
+            <button onclick="rateCard('bad')" class="big-btn bg-red-600 hover:bg-red-500">BAD</button>
+            <button onclick="rateCard('mwah')" class="big-btn bg-amber-500 hover:bg-amber-400">MWAH</button>
+            <button onclick="rateCard('good')" class="big-btn bg-emerald-500 hover:bg-emerald-400">GOOD</button>
+        </div>
+    </div>
+
+    <!-- ADD / EDIT MODAL -->
+    <div id="add-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6" id="modal-title">Nieuwe flashcard toevoegen</h2>
+            
+            <input type="hidden" id="edit-id">
+
+            <div class="mb-6">
+                <label class="block text-sm mb-2">Voorzijde (visueel)</label>
+                <input type="file" id="front-upload" accept="image/*" class="w-full bg-zinc-800 p-4 rounded-2xl">
+            </div>
+            <div class="mb-8">
+                <label class="block text-sm mb-2">Achterzijde (tekst)</label>
+                <input type="file" id="back-upload" accept="image/*" class="w-full bg-zinc-800 p-4 rounded-2xl">
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="hideAddModal()" class="flex-1 py-5 bg-zinc-700 hover:bg-zinc-600 rounded-3xl text-lg">Annuleren</button>
+                <button onclick="saveCard()" class="flex-1 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-lg">Opslaan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================== CONFIG ==================
+    const VERSION = "2.0";
+    let cards = [];
+    let currentCard = null;
+    let showingFront = true;
+    let currentSessionType = null;
+
+    // ================== LOAD DATA ==================
+    function loadData() {
+        const saved = localStorage.getItem('b737_cards_v2');
+        if (saved) {
+            cards = JSON.parse(saved);
+            // Migratie voor oudere versies
+            cards.forEach(card => {
+                if (!card.goodCount) card.goodCount = 0;
+                if (!card.mwahCount) card.mwahCount = 0;
+                if (!card.badCount) card.badCount = 0;
+                if (!card.lastReviewed) card.lastReviewed = null;
+                if (!card.reviews) card.reviews = 0;
+                if (card.nextDue === undefined) card.nextDue = Date.now();
+            });
+        } else {
+            // Initial load from files (190 cards)
+            cards = Array.from({length: 190}, (_, i) => {
+                const num = String(i+1).padStart(3, '0');
+                return {
+                    id: i+1,
+                    front: `flashcards/front_${num}.png`,
+                    back: `flashcards/back_${num}.png`,
+                    goodCount: 0,
+                    mwahCount: 0,
+                    badCount: 0,
+                    lastScore: null,
+                    lastReviewed: null,
+                    reviews: 0,
+                    nextDue: Date.now()
+                };
+            });
+        }
+        saveData();
+    }
+
+    function saveData() {
+        localStorage.setItem('b737_cards_v2', JSON.stringify(cards));
+    }
+
+    // ================== DASHBOARD ==================
+    function updateDashboard() {
+        const not = cards.filter(c => !c.lastScore).length;
+        const bad = cards.filter(c => c.lastScore === 'bad').length;
+        const mwah = cards.filter(c => c.lastScore === 'mwah').length;
+        const good = cards.filter(c => c.lastScore === 'good').length;
+
+        document.getElementById('not-count').textContent = not;
+        document.getElementById('bad-count').textContent = bad;
+        document.getElementById('mwah-count').textContent = mwah;
+        document.getElementById('good-count').textContent = good;
+
+        const done = cards.filter(c => c.lastScore).length;
+        document.getElementById('progress-text').textContent = `${done} / ${cards.length}`;
+        document.getElementById('progress-bar').style.width = `${(done / cards.length) * 100}%`;
+    }
+
+    // ================== SESSIONS ==================
+    function startSession(type) {
+        currentSessionType = type;
+        const now = Date.now();
+
+        let dueCards = cards.filter(card => {
+            if (type === 'super') return true;
+            if (type === 'bad') return card.lastScore === 'bad';
+            if (type === 'mwah') return card.lastScore === 'mwah';
+            if (type === 'good') return card.lastScore === 'good';
+            if (type === 'new') return !card.lastScore;
+            return true;
+        });
+
+        // Slimme prioritering
+        dueCards.sort((a, b) => {
+            const timeA = a.lastReviewed ? now - new Date(a.lastReviewed).getTime() : Infinity;
+            const timeB = b.lastReviewed ? now - new Date(b.lastReviewed).getTime() : Infinity;
+            
+            if (timeA !== timeB) return timeB - timeA; // langst geleden eerst
+            if ((b.badCount || 0) !== (a.badCount || 0)) return (b.badCount || 0) - (a.badCount || 0);
+            return a.id - b.id;
+        });
+
+        if (dueCards.length === 0) {
+            alert("Geen kaarten in deze sessie.");
+            return;
+        }
+
+        currentCard = dueCards[0];
+        showingFront = true;
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('study').classList.remove('hidden');
+        renderCard();
+    }
+
+    function renderCard() {
+        document.getElementById('card-img').src = showingFront ? currentCard.front : currentCard.back;
+        document.getElementById('card-id').textContent = currentCard.id.toString().padStart(3, '0');
+
+        const last = currentCard.lastReviewed 
+            ? new Date(currentCard.lastReviewed).toLocaleString('nl-NL', {dateStyle: 'short', timeStyle: 'short'})
+            : "nog nooit";
+        document.getElementById('last-reviewed').textContent = `Laatst beoordeeld: ${last}`;
+    }
+
+    function flipCard() {
+        showingFront = !showingFront;
+        renderCard();
+    }
+
+    function rateCard(score) {
+        const now = new Date().toISOString();
+        
+        currentCard.lastScore = score;
+        currentCard.lastReviewed = now;
+        currentCard.reviews = (currentCard.reviews || 0) + 1;
+
+        if (score === 'good') currentCard.goodCount = (currentCard.goodCount || 0) + 1;
+        else if (score === 'mwah') currentCard.mwahCount = (currentCard.mwahCount || 0) + 1;
+        else if (score === 'bad') currentCard.badCount = (currentCard.badCount || 0) + 1;
+
+        // Simple spaced repetition
+        const days = score === 'bad' ? 1 : score === 'mwah' ? 4 : 12 + (currentCard.reviews || 0);
+        currentCard.nextDue = Date.now() + days * 86400000;
+
+        saveData();
+        updateDashboard();
+
+        // Volgende kaart in sessie (voor nu eenvoudig: herlaad sessie)
+        backToDashboard();
+        setTimeout(() => startSession(currentSessionType), 300);
+    }
+
+    function backToDashboard() {
+        document.getElementById('study').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        updateDashboard();
+    }
+
+    // ================== ADD / EDIT CARD ==================
+    function showAddModal(editCard = null) {
+        document.getElementById('add-modal').classList.remove('hidden');
+        document.getElementById('modal-title').textContent = editCard ? "Flashcard aanpassen" : "Nieuwe flashcard toevoegen";
+        document.getElementById('edit-id').value = editCard ? editCard.id : '';
+
+        // Reset inputs
+        document.getElementById('front-upload').value = '';
+        document.getElementById('back-upload').value = '';
+    }
+
+    function hideAddModal() {
+        document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    function saveCard() {
+        const frontFile = document.getElementById('front-upload').files[0];
+        const backFile = document.getElementById('back-upload').files[0];
+        const editId = document.getElementById('edit-id').value;
+
+        if (!frontFile || !backFile) {
+            alert("Upload zowel voor- als achterzijde.");
+            return;
+        }
+
+        const readerF = new FileReader();
+        const readerB = new FileReader();
+
+        readerF.onload = () => {
+            readerB.onload = () => {
+                if (editId) {
+                    // Bestaande kaart aanpassen
+                    const card = cards.find(c => c.id == editId);
+                    if (card) {
+                        card.front = readerF.result;
+                        card.back = readerB.result;
+                    }
+                } else {
+                    // Nieuwe kaart
+                    const newId = Math.max(0, ...cards.map(c => c.id)) + 1;
+                    cards.push({
+                        id: newId,
+                        front: readerF.result,
+                        back: readerB.result,
+                        goodCount: 0,
+                        mwahCount: 0,
+                        badCount: 0,
+                        lastScore: null,
+                        lastReviewed: null,
+                        reviews: 0,
+                        nextDue: Date.now()
+                    });
+                }
+                saveData();
+                hideAddModal();
+                updateDashboard();
+                alert(editId ? "Flashcard succesvol aangepast!" : "Nieuwe flashcard toegevoegd!");
+            };
+            readerB.readAsDataURL(backFile);
+        };
+        readerF.readAsDataURL(frontFile);
+    }
+
+    // ================== SUPERRESET ==================
+    function confirmSuperReset() {
+        if (!confirm("⚠️ SUPERRESET\n\nDit wist ALLE scores, geschiedenis en voortgang.\nDe app begint volledig opnieuw.\n\nWeet je het zeker?")) return;
+        if (!confirm("Dit is de TWEEDE bevestiging.\nAlles gaat echt verloren.\nDoorgaan?")) return;
+        if (prompt("Typ 'RESET' om te bevestigen:") !== "RESET") {
+            alert("Reset geannuleerd.");
+            return;
+        }
+
+        localStorage.removeItem('b737_cards_v2');
+        location.reload();
+    }
+
+    // ================== EXPORT / IMPORT ==================
+    function exportData() {
+        const dataStr = JSON.stringify(cards, null, 2);
+        const blob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'b737_flashcards_backup.json';
+        a.click();
+    }
+
+    function importData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    cards = JSON.parse(ev.target.result);
+                    saveData();
+                    updateDashboard();
+                    alert("Data succesvol geïmporteerd!");
+                } catch(err) {
+                    alert("Ongeldig backup-bestand.");
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    // ================== START APP ==================
+    loadData();
+    updateDashboard();
+</script>
+</body>
+</html>

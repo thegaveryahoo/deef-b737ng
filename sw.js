@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.5
-// v4.5: Network-first voor index.html zodat updates direct zichtbaar zijn
-const CACHE = 'b737-trainer-v4.5';
+// B737NG Flashcard Trainer - Service Worker v4.6
+// v4.6: Race-timeout (3s) voor index.html — voorkomt hangen bij slecht bereik
+const CACHE = 'b737-trainer-v4.6';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 
@@ -110,12 +110,17 @@ self.addEventListener('fetch', e => {
   const isHtml = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
   if (isHtml) {
-    // Network-first: haal altijd de nieuwste versie op, val terug op cache als offline
+    // Race: netwerk (max 3s) vs cache — bij slecht bereik wint de cache direct
     e.respondWith(
-      fetch(e.request).then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-        return res;
-      }).catch(() =>
+      Promise.race([
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        ),
+        fetch(e.request).then(res => {
+          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        })
+      ]).catch(() =>
         caches.match(e.request).then(cached =>
           cached || new Response('Offline — geen verbinding', { status: 503 })
         )

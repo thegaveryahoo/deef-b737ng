@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.6
-// v4.6: Race-timeout (3s) voor index.html — voorkomt hangen bij slecht bereik
-const CACHE = 'b737-trainer-v4.6';
+// B737NG Flashcard Trainer - Service Worker v4.7
+// v4.7: Tailwind lokaal gecached, geen externe CDN-afhankelijkheid meer
+const CACHE = 'b737-trainer-v4.7';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 
@@ -12,7 +12,7 @@ const CORE_URLS = [
   './flashcards/metadata.json',
   './icons/icon-192.png',
   './icons/icon-bg.webp',
-  'https://cdn.tailwindcss.com',
+  './tailwind.js',
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
 ];
 

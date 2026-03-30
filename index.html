@@ -426,7 +426,7 @@
 
   <!-- Footer -->
   <div class="flex items-center justify-between mt-1">
-    <p class="text-xs text-zinc-700">v4.2 · B737NG-800 NNC Trainer · by Dave Marcelissen</p>
+    <p class="text-xs text-zinc-700" id="footer-version">v? · B737NG-800 NNC Trainer · by Dave Marcelissen</p>
     <div class="flex gap-2">
       <button onclick="changePinFlow()" class="text-xs text-zinc-700 hover:text-zinc-400 transition-colors font-medium px-2 py-1">🔒 PIN</button>
       <button onclick="initSuperReset()" class="text-xs text-zinc-700 hover:text-red-400 transition-colors font-medium px-2 py-1">⚠️ SUPERRESET</button>
@@ -2800,6 +2800,9 @@ loadData();
 loadMetadata();
 initNalasSearch(); // start OCR in background (no await — non-blocking)
 initPin();        // toon PIN-scherm (showDashboard wordt aangeroepen na correcte PIN)
+// Zet versienummer in footer dynamisch zodat het altijd klopt
+const _fv = document.getElementById('footer-version');
+if (_fv) _fv.textContent = `v${APP_VERSION} · B737NG-800 NNC Trainer · by Dave Marcelissen`;
 // Initial sync on load (na PIN — showDashboard doet dit via maybeSyncOnDashboard)
 </script>
 

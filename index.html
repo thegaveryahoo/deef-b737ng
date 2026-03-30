@@ -821,18 +821,28 @@
 
       <div class="bg-zinc-800/60 border border-emerald-800/50 rounded-2xl p-4">
         <div class="flex justify-between items-center mb-2">
-          <span class="font-black text-emerald-400 text-base" id="info-current-version">v4.0</span>
+          <span class="font-black text-emerald-400 text-base" id="info-current-version">v4.7</span>
           <span class="text-xs bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full font-semibold">Huidig</span>
         </div>
         <ul class="space-y-1 text-zinc-300">
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>SUPERRESET sync fix: andere apparaten nemen de reset nu correct over</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Swipe rechts op voorzijde = terug naar vorige kaart</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Swipe links op voorzijde = overslaan (geen beoordeling)</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Dagelijkse studiestreak 🔥 op dashboard</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Sessievoortgangsbalk + G/M/B tellers tijdens studie</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>6-cijferige PIN-beveiliging (instelbaar via 🔒 PIN)</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Export/Import knoppen verwijderd (sync vervangt dit)</li>
-          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Netlify HTTPS hosting — offline op iPad &amp; Samsung S24</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Tailwind CSS lokaal opgeslagen — vormgeving werkt altijd offline</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Service worker v4.7: geen externe CDN-afhankelijkheid meer</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>SW race-timeout (3s) voor snelle fallback bij slecht bereik</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Gemarkeerde kaarten sessie (eigen modus zonder beoordeling)</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Supercyclus hervat waar je gebleven was</li>
+          <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span>Gehost op GitHub Pages (was Netlify)</li>
+        </ul>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+        <div class="font-bold text-zinc-300 mb-2">v4.0</div>
+        <ul class="space-y-1 text-zinc-500">
+          <li class="flex gap-2"><span class="shrink-0">·</span>SUPERRESET sync fix: andere apparaten nemen de reset nu correct over</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Swipe rechts op voorzijde = terug naar vorige kaart</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Swipe links op voorzijde = overslaan (geen beoordeling)</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Dagelijkse studiestreak 🔥 op dashboard</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>Sessievoortgangsbalk + G/M/B tellers tijdens studie</li>
+          <li class="flex gap-2"><span class="shrink-0">·</span>6-cijferige PIN-beveiliging (instelbaar via 🔒 PIN)</li>
         </ul>
       </div>
 
@@ -911,7 +921,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.3";
+const APP_VERSION = "4.7";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;

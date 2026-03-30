@@ -2269,16 +2269,32 @@ async function checkForUpdate() {
   if (!('serviceWorker' in navigator)) { showToast("Service worker niet beschikbaar."); return; }
   const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
   if (!reg) { showToast("App niet als PWA geïnstalleerd."); return; }
-  showToast("Controleren op update…");
-  await reg.update();
-  if (reg.waiting) {
+
+  function activateAndReload(sw) {
     showToast("Update gevonden — app herlaadt nu…");
-    setTimeout(() => reg.waiting.postMessage({ type: 'SKIP_WAITING' }), 800);
-  } else if (reg.installing) {
-    showToast("Update wordt geïnstalleerd — app herlaadt straks automatisch.");
-  } else {
-    showToast(`App is up-to-date (v${APP_VERSION}).`);
+    sw.postMessage({ type: 'SKIP_WAITING' });
+    setTimeout(() => window.location.reload(), 1000);
   }
+
+  // Al een wachtende SW? Direct activeren.
+  if (reg.waiting) { activateAndReload(reg.waiting); return; }
+
+  showToast("Controleren op update…");
+  try { await reg.update(); } catch(e) {}
+
+  // Na update(): wachtende SW?
+  if (reg.waiting) { activateAndReload(reg.waiting); return; }
+
+  // Nog aan het installeren? Wacht tot het klaar is.
+  if (reg.installing) {
+    showToast("Update wordt geïnstalleerd…");
+    reg.installing.addEventListener('statechange', function() {
+      if (this.state === 'installed') activateAndReload(this);
+    });
+    return;
+  }
+
+  showToast(`Geen update beschikbaar (v${APP_VERSION}).`);
 }
 
 function schedulePush() {

@@ -2140,14 +2140,30 @@ function showToast(msg) {
 // SERVICE WORKER (voor offline support)
 // =====================================================================
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  // Onthoud of er al een actieve SW is vóór registratie
   const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
 
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // updateViaCache:'none' = sw.js altijd van netwerk ophalen, nooit uit HTTP-cache
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+      // Forceer direct een update-check bij elke app-start
+      reg.update();
+
+      // Als er al een wachtende SW is: stuur skipWaiting
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+      // Als er een nieuwe SW installeert: stuur skipWaiting zodra die klaar is
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed') sw.postMessage({ type: 'SKIP_WAITING' });
+        });
+      });
+    })
+    .catch(() => {});
 
   // Zodra een nieuwe SW de controle overneemt: automatisch herladen
-  // → de app krijgt dan direct de nieuwe versie, zonder handmatige cache-actie
-  let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hadController && !reloading) {
       reloading = true;

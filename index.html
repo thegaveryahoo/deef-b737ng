@@ -940,7 +940,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.12";
+const APP_VERSION = "4.13";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -2235,6 +2235,7 @@ let notesAcc         = {}; // { cardId: { note: "...", at: "iso" } }
 let lastSyncTime     = 0;
 let pushTimer        = null;
 let _skipPush        = false; // prevent push during pull-merge-save
+let _notesSyncedOnce = false; // true na eerste succesvolle sync — dan pas _notes_index pushen
 
 // ── Notities-accumulator: groeit alleen, wordt nooit kleiner ─────────
 // Doel: auto-push mag server nooit overschrijven met minder notities.
@@ -2547,6 +2548,7 @@ async function syncWithServer() {
       }
     }
 
+    _notesSyncedOnce = true; // nu pas veilig om _notes_index te pushen
     const t = new Date().toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
     updateSyncUI('ok', `Gesynchroniseerd om ${t}`);
     // Push merged local data to server
@@ -2597,8 +2599,9 @@ async function pushToServer(silent = false) {
           lastScore: null, reviews: 0, nextDue: 0, custom: false
         });
       }
-      // Voeg notities-index toe via accumulator (nooit kleiner dan vorige push)
-      if (Object.keys(notesAcc).length > 0) {
+      // Voeg notities-index toe via accumulator — ALLEEN na eerste sync
+      // zodat auto-push de server nooit overschrijft vóór serverdata gemerged is
+      if (_notesSyncedOnce && Object.keys(notesAcc).length > 0) {
         const latestAt = Object.values(notesAcc).reduce((max, e) => {
           const t = e.at ? new Date(e.at).getTime() : 0; return t > max ? t : max;
         }, 0);

@@ -370,7 +370,7 @@
     <button id="btn-new-super" onclick="startNewSuperSession()" class="text-xs text-emerald-700 hover:text-emerald-400 underline transition-colors hidden">Nieuwe supercyclus starten</button>
   </div>
 
-  <!-- Sessie-filter grid 2×2 -->
+  <!-- Sessie-filter grid: Slecht + Mwah -->
   <div class="grid grid-cols-2 gap-2 mb-3">
     <button onclick="startSession('bad')"  class="btn-session bg-red-950  hover:bg-red-900  border border-red-900/50  text-red-300">
       <span class="text-base mr-1.5">🔴</span><span class="font-bold">Slecht</span>
@@ -379,14 +379,6 @@
     <button onclick="startSession('mwah')" class="btn-session bg-amber-950 hover:bg-amber-900 border border-amber-900/50 text-amber-300">
       <span class="text-base mr-1.5">🟡</span><span class="font-bold">Mwah</span>
       <div class="text-xs font-normal text-amber-700 mt-0.5" id="lbl-mwah-count"></div>
-    </button>
-    <button onclick="startSession('good')" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
-      <span class="text-base mr-1.5">🟢</span><span class="font-bold">Goed</span>
-      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-good-count"></div>
-    </button>
-    <button onclick="startSession('new')"  class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
-      <span class="text-base mr-1.5">📌</span><span class="font-bold">Nog te doen</span>
-      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-new-count"></div>
     </button>
   </div>
 
@@ -401,6 +393,18 @@
     </div>
     <span class="text-amber-500 text-xs font-bold shrink-0" id="lbl-flagged-count"></span>
   </button>
+
+  <!-- Sessie-filter grid: Goed + Nog te doen -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <button onclick="startSession('good')" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">🟢</span><span class="font-bold">Goed</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-good-count"></div>
+    </button>
+    <button onclick="startSession('new')"  class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">📌</span><span class="font-bold">Nog te doen</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-new-count"></div>
+    </button>
+  </div>
 
   <!-- Naslag + Kaart toevoegen -->
   <div class="grid grid-cols-3 gap-2 mb-4">
@@ -950,7 +954,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.16";
+const APP_VERSION = "4.17";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;

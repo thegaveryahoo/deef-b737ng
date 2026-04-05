@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.16
-// v4.16: actieve sessie voortgang op dashboard, offline fix
-const CACHE = 'b737-trainer-v4.16';
+// B737NG Flashcard Trainer - Service Worker v4.17
+// v4.17: menu-spatie tussen gemarkeerde kaarten en Goed/Nog te doen
+const CACHE = 'b737-trainer-v4.17';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

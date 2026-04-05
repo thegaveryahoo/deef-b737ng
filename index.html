@@ -537,10 +537,11 @@
       <div class="text-xs font-bold text-amber-400 mb-1">🔖 Opmerking</div>
       <div id="flag-note-text" class="text-sm text-amber-200 leading-relaxed"></div>
     </div>
-    <div class="flex gap-3">
-      <button onclick="unflagCurrentCard()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-400 text-sm">Markering verwijderen</button>
-      <button onclick="nextFlaggedCard()"   class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 rounded-2xl font-bold text-white text-sm">Volgende →</button>
+    <div class="flex gap-3 mb-2">
+      <button id="btn-prev-flagged" onclick="prevFlaggedCard()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 rounded-2xl font-bold text-zinc-300 text-sm transition-all">← Vorige</button>
+      <button id="btn-next-flagged" onclick="nextFlaggedCard()" class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 disabled:opacity-30 rounded-2xl font-bold text-white text-sm transition-all">Volgende →</button>
     </div>
+    <button onclick="unflagCurrentCard()" class="w-full py-2 text-xs text-zinc-600 hover:text-red-400 transition-colors">Markering verwijderen</button>
   </div>
 
   <!-- Session ended message -->
@@ -933,7 +934,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.10";
+const APP_VERSION = "4.11";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1540,6 +1541,17 @@ function nextFlaggedCard() {
   if (!session) return;
   session.index++; showCurrentCard();
 }
+function prevFlaggedCard() {
+  if (!session || session.index <= 0) return;
+  session.index--; showCurrentCard();
+}
+function updateFlaggedNavButtons() {
+  if (!session || session.type !== 'flagged') return;
+  const prev = document.getElementById('btn-prev-flagged');
+  const next = document.getElementById('btn-next-flagged');
+  if (prev) prev.disabled = session.index <= 0;
+  if (next) next.disabled = session.index >= session.queue.length - 1;
+}
 function updateFlagButton() {
   if (!session || session.index >= session.queue.length) return;
   const card = getCard(session.queue[session.index]);
@@ -1558,6 +1570,7 @@ function showCurrentCard() {
   const isFlaggedSession = session.type === 'flagged';
   document.getElementById('flip-area').classList.toggle('hidden', isFlaggedSession);
   document.getElementById('flagged-area').classList.toggle('hidden', !isFlaggedSession);
+  if (isFlaggedSession) updateFlaggedNavButtons();
   // G/M/B sessieteller verbergen in flagged mode
   document.getElementById('session-score-row').style.display = isFlaggedSession ? 'none' : '';
 

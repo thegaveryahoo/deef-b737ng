@@ -454,17 +454,17 @@
 <!-- ===================== STUDY SCREEN ===================== -->
 <div id="screen-study" class="screen hidden max-w-3xl mx-auto px-4 py-4">
 
-  <!-- Voortgangsbalk (zelfde als hoofdmenu: Slecht/Mwah/Goed/Nog te doen) -->
-  <div class="flex gap-1 h-1.5 rounded-full overflow-hidden mb-1" id="study-category-bar">
+  <!-- Groene totale voortgangsbalk (bovenaan, zelfde als hoofdmenu) -->
+  <div class="w-full h-1.5 bg-zinc-800 rounded-full mb-1 overflow-hidden">
+    <div id="session-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:0%"></div>
+  </div>
+
+  <!-- Gekleurde categoriebalk (Slecht/Mwah/Goed/Nog te doen) -->
+  <div class="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2" id="study-category-bar">
     <div id="study-bar-bad"  class="transition-all duration-500" style="width:0%;background:#dc2626"></div>
     <div id="study-bar-mwah" class="transition-all duration-500" style="width:0%;background:#f59e0b"></div>
     <div id="study-bar-good" class="transition-all duration-500" style="width:0%;background:#10b981"></div>
     <div id="study-bar-new"  class="transition-all duration-500" style="width:100%;background:#3f3f46"></div>
-  </div>
-
-  <!-- Sessievoortgangsbalk -->
-  <div class="w-full h-1.5 bg-zinc-800 rounded-full mb-2 overflow-hidden">
-    <div id="session-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:0%"></div>
   </div>
 
   <!-- Sessie-teller -->
@@ -963,7 +963,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.19";
+const APP_VERSION = "4.20";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;

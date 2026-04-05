@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.7
-// v4.7: Tailwind lokaal gecached, geen externe CDN-afhankelijkheid meer
-const CACHE = 'b737-trainer-v4.7';
+// B737NG Flashcard Trainer - Service Worker v4.8
+// v4.8: flagNote/flagNoteUpdatedAt sync toegevoegd
+const CACHE = 'b737-trainer-v4.8';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

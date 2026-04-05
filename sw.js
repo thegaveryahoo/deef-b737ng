@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.17
-// v4.17: menu-spatie tussen gemarkeerde kaarten en Goed/Nog te doen
-const CACHE = 'b737-trainer-v4.17';
+// B737NG Flashcard Trainer - Service Worker v4.18
+// v4.18: PIN vergeten knop + resetPin functie
+const CACHE = 'b737-trainer-v4.18';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

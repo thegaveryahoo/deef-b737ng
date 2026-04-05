@@ -276,6 +276,7 @@
     <button class="pin-btn text-zinc-400 text-2xl" onclick="pinBack()">⌫</button>
   </div>
   <p id="pin-error" class="text-red-400 text-sm mt-4 hidden">Onjuiste PIN</p>
+  <button onclick="resetPin()" class="text-xs text-zinc-700 hover:text-zinc-500 mt-6 transition-colors">PIN vergeten?</button>
 </div>
 
 <!-- ===================== DASHBOARD ===================== -->
@@ -954,7 +955,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.17";
+const APP_VERSION = "4.18";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1312,6 +1313,17 @@ async function savePinHash(hash) {
   if (getSyncUrl() && navigator.onLine) {
     await pushToServer(true);
   }
+}
+
+async function resetPin() {
+  if (!confirm('PIN verwijderen? Je kunt daarna een nieuwe instellen via het dashboard.')) return;
+  localStorage.removeItem(PIN_HASH_KEY);
+  localStorage.removeItem(PIN_CHANGED_KEY);
+  localStorage.removeItem(PIN_TRIES_KEY);
+  localStorage.removeItem(PIN_LOCK_KEY);
+  // Push lege PIN naar server zodat andere apparaten ook ontgrendeld worden
+  if (getSyncUrl() && navigator.onLine) await pushToServer(true);
+  window.location.reload();
 }
 
 function changePinFlow() {

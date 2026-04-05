@@ -340,6 +340,16 @@
       <span><span class="text-emerald-400">■</span> Goed</span>
       <span><span class="text-zinc-700">■</span> Nog te doen</span>
     </div>
+    <!-- Actieve sessie voortgang (alleen zichtbaar als sessie bezig) -->
+    <div id="active-session-progress" class="hidden mt-3 pt-3 border-t border-zinc-800">
+      <div class="flex justify-between text-xs mb-1.5">
+        <span id="active-session-label" class="font-semibold text-zinc-400"></span>
+        <span id="active-session-pct" class="text-zinc-500"></span>
+      </div>
+      <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div id="active-session-fill" class="h-full rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Due info -->
@@ -940,7 +950,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.15";
+const APP_VERSION = "4.16";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1407,6 +1417,25 @@ function updateDashboard() {
     }
     if (btnNewSuper) btnNewSuper.classList.toggle('hidden', !hasActive);
   }
+  // Actieve sessie voortgangsbalk op dashboard
+  const activeSession = (() => {
+    try { return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY)); } catch(e) { return null; }
+  })();
+  const activeEl = document.getElementById('active-session-progress');
+  if (activeSession && activeSession.total > 0 && activeSession.index < activeSession.total) {
+    const sessionColors = { super: '#10b981', bad: '#dc2626', mwah: '#f59e0b', good: '#10b981', new: '#3b82f6' };
+    const sessionNames  = { super: 'Supercyclus', bad: 'Slecht', mwah: 'Mwah', good: 'Goed', new: 'Nog te doen' };
+    const pct = Math.round(activeSession.index / activeSession.total * 100);
+    document.getElementById('active-session-label').textContent =
+      `${sessionNames[activeSession.type] || activeSession.type} bezig — ${activeSession.index} / ${activeSession.total}`;
+    document.getElementById('active-session-pct').textContent = `${pct}%`;
+    document.getElementById('active-session-fill').style.width = pct + '%';
+    document.getElementById('active-session-fill').style.background = sessionColors[activeSession.type] || '#10b981';
+    activeEl.classList.remove('hidden');
+  } else {
+    activeEl.classList.add('hidden');
+  }
+
   // Gemarkeerde kaarten badge
   const flagCount = cards.filter(c => c.flagged).length;
   const lblFlagged = document.getElementById('lbl-flagged-count');
@@ -1619,6 +1648,13 @@ function showCurrentCard() {
   document.getElementById('ses-mwah').textContent = session.mwah || 0;
   document.getElementById('ses-bad').textContent  = session.bad  || 0;
 
+  // Sla actieve sessie op voor dashboard-voortgang (niet voor flagged)
+  if (session.type !== 'flagged') {
+    localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
+      type: session.type, index: session.index, total: session.queue.length
+    }));
+  }
+
   // Card meta
   document.getElementById('card-id-display').textContent = `Kaart ${card.id}`;
   updateLastReviewed(card);
@@ -1736,6 +1772,7 @@ function showSessionDone() {
     new:   "Alle nog-te-doen kaarten beoordeeld voor het eerst!"
   };
   document.getElementById('session-done-msg').textContent = msgs[type] || `${session.queue.length} kaarten doorlopen.`;
+  localStorage.removeItem(ACTIVE_SESSION_KEY); // sessie klaar → verwijder voortgang
 }
 
 function backToDashboard() {
@@ -2228,7 +2265,8 @@ const PIN_TRIES_KEY   = 'b737_pin_tries';   // mislukte pogingen
 const PIN_LOCK_KEY    = 'b737_pin_lock';    // lockout vervaltijd
 const PIN_UNLOCK_KEY  = 'b737_pin_unlock';  // vrijgegeven tot (timestamp)
 const PIN_SESSION_MS  = 4 * 60 * 60 * 1000; // 4 uur
-const SUPER_SESSION_KEY = 'b737_super_session';
+const SUPER_SESSION_KEY  = 'b737_super_session';
+const ACTIVE_SESSION_KEY = 'b737_active_session'; // actieve sessie voor dashboard-voortgang
 const SYNC_TOKEN     = 'b737-davey-transavia-2026';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnC_pxvh0m576KbLyNKaxcoZK7WF3PqsaUvz7KYYMA3pTOZaYivB1jVZsxNZco99_L/exec';
 const NOTES_ACC_KEY  = 'b737_notes_acc'; // persistente accumulator: nooit kleiner

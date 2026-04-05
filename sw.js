@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.15
-// v4.15: streak sync, keywords merge, debug logs verwijderd
-const CACHE = 'b737-trainer-v4.15';
+// B737NG Flashcard Trainer - Service Worker v4.16
+// v4.16: actieve sessie voortgang op dashboard, offline fix
+const CACHE = 'b737-trainer-v4.16';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 
@@ -110,21 +110,24 @@ self.addEventListener('fetch', e => {
   const isHtml = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
   if (isHtml) {
-    // Race: netwerk (max 3s) vs cache — bij slecht bereik wint de cache direct
+    // Cache-first voor HTML: geef altijd gecachte versie als netwerk faalt of te traag is
+    // Achtergrond: haal nieuwe versie op en update cache (zodat volgende keer de nieuwste geladen wordt)
     e.respondWith(
-      Promise.race([
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 3000)
-        ),
-        fetch(e.request).then(res => {
+      caches.match(e.request).then(cached => {
+        const networkFetch = fetch(e.request).then(res => {
           if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
           return res;
-        })
-      ]).catch(() =>
-        caches.match(e.request).then(cached =>
-          cached || new Response('Offline — geen verbinding', { status: 503 })
-        )
-      )
+        });
+        // Als er een gecachte versie is: geef die direct terug, haal netwerk op de achtergrond
+        if (cached) {
+          networkFetch.catch(() => {}); // achtergrond update, negeer fouten
+          return cached;
+        }
+        // Geen cache: probeer netwerk, anders foutmelding
+        return networkFetch.catch(() =>
+          new Response('Offline — open de app eerst met een internetverbinding', { status: 503 })
+        );
+      })
     );
   } else {
     // Cache-first voor alle andere bestanden (afbeeldingen, scripts, etc.)

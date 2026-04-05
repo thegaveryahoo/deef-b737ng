@@ -963,7 +963,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.20";
+const APP_VERSION = "4.21";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1670,9 +1670,10 @@ function showCurrentCard() {
   document.getElementById('session-progress-label').textContent =
     `Kaart ${session.index + 1} / ${session.queue.length}`;
 
-  // Voortgangsbalk
-  const pct = session.queue.length > 0 ? (session.index / session.queue.length) * 100 : 0;
-  document.getElementById('session-progress-bar').style.width = pct + '%';
+  // Voortgangsbalk — zelfde als hoofdmenu: beoordeeld / totaal
+  const _done = cards.filter(c => c.lastScore).length;
+  const _pct  = cards.length > 0 ? (_done / cards.length) * 100 : 0;
+  document.getElementById('session-progress-bar').style.width = _pct + '%';
 
   // Sessie-teller
   const remaining = session.queue.length - session.index;

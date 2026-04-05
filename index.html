@@ -418,6 +418,7 @@
       </div>
       <div class="flex items-center gap-3 flex-shrink-0 ml-2">
         <button onclick="manualSync()" id="btn-sync-now" class="hidden text-xs text-sky-400 hover:text-sky-300 font-semibold transition-colors">↻ Sync</button>
+        <button onclick="forcePushNotes()" class="text-xs text-amber-600 hover:text-amber-400 font-semibold transition-colors">↑ Notities</button>
         <button onclick="checkForUpdate()" class="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">↑ Update</button>
         <button onclick="showSyncModal()" class="text-xs text-zinc-600 hover:text-zinc-400 underline transition-colors">Instellen</button>
       </div>
@@ -940,7 +941,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.13";
+const APP_VERSION = "4.14";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -2356,6 +2357,64 @@ function manualSync() {
   if (!getSyncUrl())      { showToast("Sync nog niet ingesteld."); return; }
   syncWithServer();
   showToast("Synchroniseren…");
+}
+
+async function forcePushNotes() {
+  const url = getSyncUrl();
+  if (!url)                { showToast("Sync niet ingesteld."); return; }
+  if (!navigator.onLine)   { showToast("Geen internetverbinding."); return; }
+
+  showToast("Notities ophalen van server…");
+  // Stap 1: haal serverdata op en merge notities in lokale accumulator
+  try {
+    const res = await fetch(buildSyncUrl(url));
+    if (res.ok) {
+      const data = await res.json();
+      const notesCard = (data.cards || []).find(c => c.id === '_notes_index');
+      if (notesCard && notesCard.keywords) {
+        try {
+          const remoteNotes = JSON.parse(notesCard.keywords);
+          mergeNotesFromServer(remoteNotes);
+          saveData();
+        } catch(e) {}
+      }
+    }
+  } catch(e) {}
+
+  // Stap 2: stuur gecombineerde accumulator terug naar server
+  const localNotes = {};
+  cards.forEach(c => {
+    if (c.flagNote) localNotes[c.id] = { note: c.flagNote, at: c.flagNoteUpdatedAt || new Date().toISOString() };
+  });
+  // Merge ook accumulator-entries die lokaal al weg zijn
+  Object.entries(notesAcc).forEach(([id, entry]) => {
+    if (!localNotes[id]) localNotes[id] = entry;
+  });
+
+  const latestAt = Object.values(localNotes).reduce((max, e) => {
+    const t = e.at ? new Date(e.at).getTime() : 0; return t > max ? t : max;
+  }, Date.now());
+
+  const payload = {
+    version: APP_VERSION,
+    syncedAt: new Date().toISOString(),
+    deviceId: getDeviceId(),
+    cards: [{
+      id: '_notes_index',
+      keywords: JSON.stringify(localNotes),
+      lastReviewed: new Date(latestAt).toISOString(),
+      goodCount: 0, mwahCount: 0, badCount: 0,
+      lastScore: null, reviews: 0, nextDue: 0, custom: false, imageUpdatedAt: null
+    }]
+  };
+
+  try {
+    await fetch(buildSyncUrl(url), { method: 'POST', body: JSON.stringify(payload) });
+    showToast(`✓ ${Object.keys(localNotes).length} notities naar server gestuurd`);
+    _notesSyncedOnce = true;
+  } catch(e) {
+    showToast("Fout bij versturen notities");
+  }
 }
 
 async function checkForUpdate() {

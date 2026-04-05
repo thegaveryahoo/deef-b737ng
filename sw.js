@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.13
-// v4.13: notities pas pushen na eerste sync om overschrijven te voorkomen
-const CACHE = 'b737-trainer-v4.13';
+// B737NG Flashcard Trainer - Service Worker v4.14
+// v4.14: handmatige "Notities" knop om notities te mergen en pushen
+const CACHE = 'b737-trainer-v4.14';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

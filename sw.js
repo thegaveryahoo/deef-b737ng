@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.11
-// v4.11: vorige knop in gemarkeerde kaarten sessie
-const CACHE = 'b737-trainer-v4.11';
+// B737NG Flashcard Trainer - Service Worker v4.12
+// v4.12: persistente notities-accumulator, notities bewerkbaar in flagged sessie
+const CACHE = 'b737-trainer-v4.12';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

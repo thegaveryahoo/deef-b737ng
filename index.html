@@ -533,9 +533,15 @@
 
   <!-- Flagged session controls (geen beoordeling) -->
   <div id="flagged-area" class="hidden mt-3">
-    <div id="flag-note-display" class="hidden bg-amber-950/60 border border-amber-700/50 rounded-xl px-4 py-3 mb-3">
-      <div class="text-xs font-bold text-amber-400 mb-1">🔖 Opmerking</div>
-      <div id="flag-note-text" class="text-sm text-amber-200 leading-relaxed"></div>
+    <div class="bg-amber-950/60 border border-amber-700/50 rounded-xl px-3 py-2 mb-3">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs font-bold text-amber-400">🔖 Notitie</span>
+        <span id="flag-note-saved" class="text-xs text-zinc-600 hidden">Opgeslagen</span>
+      </div>
+      <textarea id="flag-note-text" rows="3"
+        placeholder="Voeg een notitie toe…"
+        oninput="scheduleFlaggedNoteSave()"
+        class="w-full bg-transparent text-sm text-amber-200 placeholder-zinc-600 resize-none outline-none leading-relaxed"></textarea>
     </div>
     <div class="flex gap-3 mb-2">
       <button id="btn-prev-flagged" onclick="prevFlaggedCard()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 rounded-2xl font-bold text-zinc-300 text-sm transition-all">← Vorige</button>
@@ -934,7 +940,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.11";
+const APP_VERSION = "4.12";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1520,6 +1526,7 @@ function saveFlagNote() {
   card.flagged = true;
   card.flagNote = document.getElementById('flag-note-input').value.trim();
   card.flagNoteUpdatedAt = new Date().toISOString();
+  updateAccFromCard(card);
   saveData(); hideFlagModal(); updateFlagButton(); updateDashboard(); showToast('Kaart gemarkeerd 🔖');
 }
 function removeFlagNote() {
@@ -1527,6 +1534,7 @@ function removeFlagNote() {
   const card = getCard(session.queue[session.index]);
   if (!card) return;
   card.flagged = false; card.flagNote = ''; card.flagNoteUpdatedAt = new Date().toISOString();
+  updateAccFromCard(card);
   saveData(); hideFlagModal(); updateFlagButton(); updateDashboard(); showToast('Markering verwijderd');
 }
 function unflagCurrentCard() {
@@ -1534,6 +1542,7 @@ function unflagCurrentCard() {
   const card = getCard(session.queue[session.index]);
   if (!card) return;
   card.flagged = false; card.flagNote = ''; card.flagNoteUpdatedAt = new Date().toISOString();
+  updateAccFromCard(card);
   saveData(); updateDashboard(); showToast('Markering verwijderd');
   session.index++; showCurrentCard();
 }
@@ -1622,11 +1631,10 @@ function showCurrentCard() {
     document.getElementById('view-both').classList.remove('hidden');
     document.getElementById('flip-area').classList.add('hidden');
     document.getElementById('rating-area').classList.add('hidden');
-    const noteEl   = document.getElementById('flag-note-display');
     const noteText = document.getElementById('flag-note-text');
-    const hasNote  = card.flagNote && card.flagNote.trim();
-    noteEl.classList.toggle('hidden', !hasNote);
-    if (hasNote) noteText.textContent = card.flagNote;
+    noteText.value = card.flagNote || '';
+    document.getElementById('flag-note-saved').classList.add('hidden');
+    clearTimeout(_flaggedNoteSaveTimer);
   }
   updateFlagButton();
 }
@@ -2222,9 +2230,59 @@ const PIN_SESSION_MS  = 4 * 60 * 60 * 1000; // 4 uur
 const SUPER_SESSION_KEY = 'b737_super_session';
 const SYNC_TOKEN     = 'b737-davey-transavia-2026';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnC_pxvh0m576KbLyNKaxcoZK7WF3PqsaUvz7KYYMA3pTOZaYivB1jVZsxNZco99_L/exec';
+const NOTES_ACC_KEY  = 'b737_notes_acc'; // persistente accumulator: nooit kleiner
+let notesAcc         = {}; // { cardId: { note: "...", at: "iso" } }
 let lastSyncTime     = 0;
 let pushTimer        = null;
 let _skipPush        = false; // prevent push during pull-merge-save
+
+// ── Notities-accumulator: groeit alleen, wordt nooit kleiner ─────────
+// Doel: auto-push mag server nooit overschrijven met minder notities.
+function loadNotesAcc() {
+  try { const r = localStorage.getItem(NOTES_ACC_KEY); if (r) notesAcc = JSON.parse(r); } catch(e) { notesAcc = {}; }
+  // Initialiseer vanuit lokale kaarten (voor bestaande installaties)
+  cards.forEach(c => {
+    if (c.flagNote && !notesAcc[c.id]) {
+      notesAcc[c.id] = { note: c.flagNote, at: c.flagNoteUpdatedAt || new Date().toISOString() };
+    }
+  });
+  saveNotesAcc();
+}
+function saveNotesAcc() {
+  try { localStorage.setItem(NOTES_ACC_KEY, JSON.stringify(notesAcc)); } catch(e) {}
+}
+function updateAccFromCard(card) {
+  if (!card.flagNote) { delete notesAcc[card.id]; }
+  else { notesAcc[card.id] = { note: card.flagNote, at: card.flagNoteUpdatedAt || new Date().toISOString() }; }
+  saveNotesAcc();
+}
+function mergeNotesFromServer(remoteNotes) {
+  // Merge servernotities in accumulator én in lokale kaarten
+  let changed = false;
+  Object.entries(remoteNotes).forEach(([cardId, entry]) => {
+    const remoteNote = (entry.note || '').trim();
+    if (!remoteNote) return;
+    const existing  = notesAcc[cardId];
+    const localNote = existing ? (existing.note || '').trim() : '';
+    const remoteAt  = entry.at ? new Date(entry.at).getTime() : 0;
+    const localAt   = existing && existing.at ? new Date(existing.at).getTime() : 0;
+    let finalNote = localNote, finalAt = localAt;
+    if (!localNote) {
+      finalNote = remoteNote; finalAt = remoteAt;
+    } else if (remoteNote !== localNote) {
+      const merged = remoteAt <= localAt ? remoteNote + '\n---\n' + localNote : localNote + '\n---\n' + remoteNote;
+      finalNote = merged; finalAt = Math.max(remoteAt, localAt);
+    }
+    if (finalNote !== localNote) {
+      notesAcc[cardId] = { note: finalNote, at: new Date(finalAt).toISOString() };
+      const card = getCard(cardId);
+      if (card) { card.flagNote = finalNote; card.flagNoteUpdatedAt = new Date(finalAt).toISOString(); card.flagged = true; }
+      changed = true;
+    }
+  });
+  if (changed) saveNotesAcc();
+  return changed;
+}
 
 function getSyncUrl() {
   // Pre-configure with the Apps Script URL if not yet set
@@ -2371,33 +2429,12 @@ async function syncWithServer() {
           }
           return; // niet als kaart verwerken
         }
-        // Speciale notities-index — merge flagNotes via keywords veld
+        // Speciale notities-index — merge via accumulator
         if (remote.id === '_notes_index') {
           if (remote.keywords) {
             try {
               const remoteNotes = JSON.parse(remote.keywords);
-              Object.entries(remoteNotes).forEach(([cardId, entry]) => {
-                const card = getCard(cardId);
-                if (!card) return;
-                const remoteNote = (entry.note || '').trim();
-                const localNote  = (card.flagNote || '').trim();
-                const remoteAt   = entry.at ? new Date(entry.at).getTime() : 0;
-                const localAt    = card.flagNoteUpdatedAt ? new Date(card.flagNoteUpdatedAt).getTime() : 0;
-                if (remoteNote && localNote && remoteNote !== localNote) {
-                  const merged = remoteAt <= localAt
-                    ? remoteNote + '\n---\n' + localNote
-                    : localNote  + '\n---\n' + remoteNote;
-                  card.flagNote = merged;
-                  card.flagNoteUpdatedAt = new Date(Math.max(remoteAt, localAt)).toISOString();
-                  card.flagged = true;
-                  changed = true;
-                } else if (remoteNote && !localNote) {
-                  card.flagNote = remoteNote;
-                  card.flagNoteUpdatedAt = entry.at || null;
-                  card.flagged = true;
-                  changed = true;
-                }
-              });
+              if (mergeNotesFromServer(remoteNotes)) changed = true;
             } catch(e) { console.warn('_notes_index parse fout:', e); }
           }
           return;
@@ -2560,21 +2597,15 @@ async function pushToServer(silent = false) {
           lastScore: null, reviews: 0, nextDue: 0, custom: false
         });
       }
-      // Voeg notities-index toe — keywords veld wordt WEL bewaard door Apps Script
-      const notesMap = {};
-      let latestNoteAt = 0;
-      cards.forEach(c => {
-        if (c.flagNote) {
-          const at = c.flagNoteUpdatedAt ? new Date(c.flagNoteUpdatedAt).getTime() : 1;
-          notesMap[c.id] = { note: c.flagNote, at: new Date(at).toISOString() };
-          if (at > latestNoteAt) latestNoteAt = at;
-        }
-      });
-      if (Object.keys(notesMap).length > 0) {
+      // Voeg notities-index toe via accumulator (nooit kleiner dan vorige push)
+      if (Object.keys(notesAcc).length > 0) {
+        const latestAt = Object.values(notesAcc).reduce((max, e) => {
+          const t = e.at ? new Date(e.at).getTime() : 0; return t > max ? t : max;
+        }, 0);
         cardList.push({
           id: '_notes_index',
-          keywords: JSON.stringify(notesMap),
-          lastReviewed: new Date(latestNoteAt || Date.now()).toISOString(),
+          keywords: JSON.stringify(notesAcc),
+          lastReviewed: new Date(latestAt || Date.now()).toISOString(),
           goodCount: 0, mwahCount: 0, badCount: 0,
           lastScore: null, reviews: 0, nextDue: 0, custom: false, imageUpdatedAt: null
         });
@@ -2755,6 +2786,27 @@ function showNalasCard(idx) {
   clearTimeout(_nalasNoteSaveTimer);
 }
 
+let _flaggedNoteSaveTimer = null;
+function scheduleFlaggedNoteSave() {
+  clearTimeout(_flaggedNoteSaveTimer);
+  _flaggedNoteSaveTimer = setTimeout(saveFlaggedNote, 1200);
+}
+function saveFlaggedNote() {
+  if (!session || session.index >= session.queue.length) return;
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  const newNote = document.getElementById('flag-note-text').value.trim();
+  card.flagNote = newNote;
+  card.flagNoteUpdatedAt = new Date().toISOString();
+  card.flagged = !!newNote;
+  updateAccFromCard(card);
+  saveData();
+  updateFlagButton(); updateDashboard();
+  const savedEl = document.getElementById('flag-note-saved');
+  savedEl.classList.remove('hidden');
+  setTimeout(() => savedEl.classList.add('hidden'), 2000);
+}
+
 let _nalasNoteSaveTimer = null;
 function scheduleNalasNoteSave() {
   clearTimeout(_nalasNoteSaveTimer);
@@ -2770,6 +2822,7 @@ function saveNalasNote() {
   card.flagNote = newNote;
   card.flagNoteUpdatedAt = new Date().toISOString();
   card.flagged = !!newNote;
+  updateAccFromCard(card);
   saveData();
   const savedEl = document.getElementById('nalas-note-saved');
   savedEl.classList.remove('hidden');
@@ -2955,6 +3008,7 @@ async function reindexCard(card) {
 // BOOT
 // =====================================================================
 loadData();
+loadNotesAcc(); // laad persistente notities-accumulator na loadData
 loadMetadata();
 initNalasSearch(); // start OCR in background (no await — non-blocking)
 initPin();        // toon PIN-scherm (showDashboard wordt aangeroepen na correcte PIN)

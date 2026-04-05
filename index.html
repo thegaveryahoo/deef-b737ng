@@ -933,7 +933,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.8";
+const APP_VERSION = "4.9";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1504,8 +1504,7 @@ function toggleFlagCard() {
   const card = getCard(session.queue[session.index]);
   if (!card) return;
   if (card.flagged) {
-    card.flagged = false; card.flagNote = ''; card.flagNoteUpdatedAt = new Date().toISOString();
-    saveData(); updateFlagButton(); showToast('Markering verwijderd');
+    showFlagModal(); // open modal zodat notitie bewerkt kan worden
   } else { showFlagModal(); }
 }
 function showFlagModal() {
@@ -1521,6 +1520,12 @@ function saveFlagNote() {
   card.flagNote = document.getElementById('flag-note-input').value.trim();
   card.flagNoteUpdatedAt = new Date().toISOString();
   saveData(); hideFlagModal(); updateFlagButton(); updateDashboard(); showToast('Kaart gemarkeerd 🔖');
+}
+function removeFlagNote() {
+  const card = getCard(session.queue[session.index]);
+  if (!card) return;
+  card.flagged = false; card.flagNote = ''; card.flagNoteUpdatedAt = new Date().toISOString();
+  saveData(); hideFlagModal(); updateFlagButton(); updateDashboard(); showToast('Markering verwijderd');
 }
 function unflagCurrentCard() {
   if (!session || session.index >= session.queue.length) return;
@@ -2331,6 +2336,9 @@ async function syncWithServer() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
+    // DEBUG tijdelijk — verwijderen na diagnose
+    const serverNotities = data.cards ? data.cards.filter(c => c.flagNote).map(c => `${c.id}:"${c.flagNote}"`) : [];
+    console.log(`[sync] server heeft ${serverNotities.length} kaarten met notitie:`, serverNotities);
     if (data.cards && Array.isArray(data.cards)) {
       let changed = false;
       const staleUrls = [];
@@ -2369,6 +2377,8 @@ async function syncWithServer() {
         }
         const local = getCard(remote.id);
         if (local) {
+          // DEBUG tijdelijk — verwijderen na diagnose
+          if (remote.flagNote) console.log(`[sync] kaart ${remote.id}: server flagNote="${remote.flagNote}", lokaal="${local.flagNote}"`);
           const lt = local.lastReviewed  ? new Date(local.lastReviewed).getTime()  : 0;
           const rt = remote.lastReviewed ? new Date(remote.lastReviewed).getTime() : 0;
           // Remote wint alleen als het NIEUWER is dan zowel lokaal als de laatste reset
@@ -2893,13 +2903,14 @@ if (_fv) _fv.textContent = `v${APP_VERSION} · B737NG-800 NNC Trainer · by Dave
 <!-- ===================== MODAL: MARKEER KAART ===================== -->
 <div id="modal-flag" class="modal-backdrop hidden">
   <div class="modal-box max-w-sm">
-    <h3 class="text-xl font-bold mb-2 text-amber-300">🔖 Kaart markeren</h3>
-    <p class="text-sm text-zinc-500 mb-4">Voeg een opmerking toe om deze kaart later te verbeteren.</p>
-    <textarea id="flag-note-input" placeholder="Bijv: afbeelding onduidelijk, tekst aanvullen..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 resize-none h-28 mb-5"></textarea>
-    <div class="flex gap-3">
+    <h3 class="text-xl font-bold mb-2 text-amber-300">🔖 Notitie bewerken</h3>
+    <p class="text-sm text-zinc-500 mb-4">Voeg een opmerking toe of bewerk de bestaande notitie.</p>
+    <textarea id="flag-note-input" placeholder="Bijv: afbeelding onduidelijk, tekst aanvullen..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 resize-none h-28 mb-4"></textarea>
+    <div class="flex gap-3 mb-2">
       <button onclick="hideFlagModal()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-semibold text-zinc-300">Annuleren</button>
-      <button onclick="saveFlagNote()" class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 rounded-2xl font-bold text-white">Markeren</button>
+      <button onclick="saveFlagNote()" class="flex-1 py-3 bg-amber-700 hover:bg-amber-600 rounded-2xl font-bold text-white">Opslaan</button>
     </div>
+    <button onclick="removeFlagNote()" class="w-full py-2 text-xs text-zinc-600 hover:text-red-400 transition-colors">Markering verwijderen</button>
   </div>
 </div>
 </body>

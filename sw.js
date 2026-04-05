@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.9
-// v4.9: notitie bewerkbaar via modal, sync debug logging
-const CACHE = 'b737-trainer-v4.9';
+// B737NG Flashcard Trainer - Service Worker v4.10
+// v4.10: notities sync via _notes_index (keywords veld)
+const CACHE = 'b737-trainer-v4.10';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

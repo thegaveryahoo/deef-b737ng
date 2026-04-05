@@ -933,7 +933,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.9";
+const APP_VERSION = "4.10";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -2358,6 +2358,37 @@ async function syncWithServer() {
           }
           return; // niet als kaart verwerken
         }
+        // Speciale notities-index — merge flagNotes via keywords veld
+        if (remote.id === '_notes_index') {
+          if (remote.keywords) {
+            try {
+              const remoteNotes = JSON.parse(remote.keywords);
+              Object.entries(remoteNotes).forEach(([cardId, entry]) => {
+                const card = getCard(cardId);
+                if (!card) return;
+                const remoteNote = (entry.note || '').trim();
+                const localNote  = (card.flagNote || '').trim();
+                const remoteAt   = entry.at ? new Date(entry.at).getTime() : 0;
+                const localAt    = card.flagNoteUpdatedAt ? new Date(card.flagNoteUpdatedAt).getTime() : 0;
+                if (remoteNote && localNote && remoteNote !== localNote) {
+                  const merged = remoteAt <= localAt
+                    ? remoteNote + '\n---\n' + localNote
+                    : localNote  + '\n---\n' + remoteNote;
+                  card.flagNote = merged;
+                  card.flagNoteUpdatedAt = new Date(Math.max(remoteAt, localAt)).toISOString();
+                  card.flagged = true;
+                  changed = true;
+                } else if (remoteNote && !localNote) {
+                  card.flagNote = remoteNote;
+                  card.flagNoteUpdatedAt = entry.at || null;
+                  card.flagged = true;
+                  changed = true;
+                }
+              });
+            } catch(e) { console.warn('_notes_index parse fout:', e); }
+          }
+          return;
+        }
         // Speciale OCR-index kaart — verwerk apart
         if (remote.id === '_ocr_index') {
           if (remote.front) { // OCR-data zit in het 'front' veld als JSON-string
@@ -2514,6 +2545,25 @@ async function pushToServer(silent = false) {
           lastReviewed: new Date(pinChanged).toISOString(),
           goodCount: 0, mwahCount: 0, badCount: 0,
           lastScore: null, reviews: 0, nextDue: 0, custom: false
+        });
+      }
+      // Voeg notities-index toe — keywords veld wordt WEL bewaard door Apps Script
+      const notesMap = {};
+      let latestNoteAt = 0;
+      cards.forEach(c => {
+        if (c.flagNote) {
+          const at = c.flagNoteUpdatedAt ? new Date(c.flagNoteUpdatedAt).getTime() : 1;
+          notesMap[c.id] = { note: c.flagNote, at: new Date(at).toISOString() };
+          if (at > latestNoteAt) latestNoteAt = at;
+        }
+      });
+      if (Object.keys(notesMap).length > 0) {
+        cardList.push({
+          id: '_notes_index',
+          keywords: JSON.stringify(notesMap),
+          lastReviewed: new Date(latestNoteAt || Date.now()).toISOString(),
+          goodCount: 0, mwahCount: 0, badCount: 0,
+          lastScore: null, reviews: 0, nextDue: 0, custom: false, imageUpdatedAt: null
         });
       }
       // Voeg OCR-index toe zodat andere apparaten geen OCR hoeven te draaien

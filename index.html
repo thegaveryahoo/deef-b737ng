@@ -418,7 +418,6 @@
       </div>
       <div class="flex items-center gap-3 flex-shrink-0 ml-2">
         <button onclick="manualSync()" id="btn-sync-now" class="hidden text-xs text-sky-400 hover:text-sky-300 font-semibold transition-colors">↻ Sync</button>
-        <button onclick="forcePushNotes()" class="text-xs text-amber-600 hover:text-amber-400 font-semibold transition-colors">↑ Notities</button>
         <button onclick="checkForUpdate()" class="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">↑ Update</button>
         <button onclick="showSyncModal()" class="text-xs text-zinc-600 hover:text-zinc-400 underline transition-colors">Instellen</button>
       </div>
@@ -941,7 +940,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.14";
+const APP_VERSION = "4.15";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1329,6 +1328,7 @@ function updateStreak() {
   s.count = (s.date === yesterday) ? s.count + 1 : 1;
   s.date  = today;
   localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+  schedulePush();
 }
 
 function getStreakCount() {
@@ -2468,9 +2468,6 @@ async function syncWithServer() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    // DEBUG tijdelijk — verwijderen na diagnose
-    const serverNotities = data.cards ? data.cards.filter(c => c.flagNote).map(c => `${c.id}:"${c.flagNote}"`) : [];
-    console.log(`[sync] server heeft ${serverNotities.length} kaarten met notitie:`, serverNotities);
     if (data.cards && Array.isArray(data.cards)) {
       let changed = false;
       const staleUrls = [];
@@ -2488,6 +2485,28 @@ async function syncWithServer() {
             }
           }
           return; // niet als kaart verwerken
+        }
+        // Speciale streak pseudo-kaart — neem hoogste count
+        if (remote.id === '_streak') {
+          if (remote.keywords) {
+            try {
+              const remoteStreak = JSON.parse(remote.keywords);
+              const localRaw = localStorage.getItem(STREAK_KEY);
+              const localStreak = localRaw ? JSON.parse(localRaw) : { date: null, count: 0 };
+              const today = todayStr();
+              // Neem de hoogste streak als beide van vandaag zijn
+              if (remoteStreak.date === today && localStreak.date === today) {
+                if (remoteStreak.count > localStreak.count) {
+                  localStorage.setItem(STREAK_KEY, JSON.stringify(remoteStreak));
+                  changed = true;
+                }
+              } else if (remoteStreak.date === today && localStreak.date !== today) {
+                localStorage.setItem(STREAK_KEY, JSON.stringify(remoteStreak));
+                changed = true;
+              }
+            } catch(e) {}
+          }
+          return;
         }
         // Speciale notities-index — merge via accumulator
         if (remote.id === '_notes_index') {
@@ -2519,8 +2538,6 @@ async function syncWithServer() {
         }
         const local = getCard(remote.id);
         if (local) {
-          // DEBUG tijdelijk — verwijderen na diagnose
-          if (remote.flagNote) console.log(`[sync] kaart ${remote.id}: server flagNote="${remote.flagNote}", lokaal="${local.flagNote}"`);
           const lt = local.lastReviewed  ? new Date(local.lastReviewed).getTime()  : 0;
           const rt = remote.lastReviewed ? new Date(remote.lastReviewed).getTime() : 0;
           // Remote wint alleen als het NIEUWER is dan zowel lokaal als de laatste reset
@@ -2552,34 +2569,12 @@ async function syncWithServer() {
             if (!local.back.startsWith('data:'))  staleUrls.push(local.back);
             changed = true;
           }
-          // Merge keywords (take non-empty, prefer remote if both non-empty)
-          if (remote.keywords && remote.keywords !== local.keywords) {
-            local.keywords = remote.keywords;
-            changed = true;
-          }
-          // Merge flagNote: samenvoegen als beide niet-leeg en verschillend zijn
-          if (remote.flagNote !== undefined) {
-            const remoteNote = (remote.flagNote || '').trim();
-            const localNote  = (local.flagNote  || '').trim();
-            const remoteNoteAt = remote.flagNoteUpdatedAt ? new Date(remote.flagNoteUpdatedAt).getTime() : 0;
-            const localNoteAt  = local.flagNoteUpdatedAt  ? new Date(local.flagNoteUpdatedAt).getTime()  : 0;
-            if (remoteNote && localNote && remoteNote !== localNote) {
-              // Beide hebben een andere notitie → samenvoegen (oudste eerst)
-              const merged = remoteNoteAt <= localNoteAt
-                ? remoteNote + '\n---\n' + localNote
-                : localNote  + '\n---\n' + remoteNote;
-              local.flagNote = merged;
-              local.flagNoteUpdatedAt = new Date(Math.max(remoteNoteAt, localNoteAt)).toISOString();
-              local.flagged = true;
-              changed = true;
-            } else if (remoteNote && !localNote) {
-              // Alleen remote heeft notitie → overnemen
-              local.flagNote = remoteNote;
-              local.flagNoteUpdatedAt = remote.flagNoteUpdatedAt || null;
-              if (remoteNote) local.flagged = true;
-              changed = true;
-            }
-            // localNote && !remoteNote → lokaal bewaren, niets doen
+          // Merge keywords: combineer beide (geen duplicaten)
+          if (remote.keywords) {
+            const localKw  = (local.keywords  || '').split(',').map(k => k.trim()).filter(Boolean);
+            const remoteKw = (remote.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
+            const merged   = [...new Set([...localKw, ...remoteKw])].join(', ');
+            if (merged !== local.keywords) { local.keywords = merged; changed = true; }
           }
         } else if (remote.custom && remote.front && remote.back) {
           const nc = makeBlankCard(remote.id, remote.front, remote.back);
@@ -2641,8 +2636,6 @@ async function pushToServer(silent = false) {
           custom: c.custom || false,
           keywords: c.keywords || '',
           imageUpdatedAt: c.imageUpdatedAt || null,
-          flagNote: c.flagNote || '',
-          flagNoteUpdatedAt: c.flagNoteUpdatedAt || null,
           front: c.custom ? c.front : undefined,
           back:  c.custom ? c.back  : undefined
         };
@@ -2658,6 +2651,19 @@ async function pushToServer(silent = false) {
           lastScore: null, reviews: 0, nextDue: 0, custom: false
         });
       }
+      // Voeg streak toe als pseudo-kaart
+      try {
+        const streak = JSON.parse(localStorage.getItem(STREAK_KEY));
+        if (streak && streak.date && streak.count > 0) {
+          cardList.push({
+            id: '_streak',
+            keywords: JSON.stringify(streak),
+            lastReviewed: new Date().toISOString(),
+            goodCount: streak.count, mwahCount: 0, badCount: 0,
+            lastScore: null, reviews: 0, nextDue: 0, custom: false, imageUpdatedAt: null
+          });
+        }
+      } catch(e) {}
       // Voeg notities-index toe via accumulator — ALLEEN na eerste sync
       // zodat auto-push de server nooit overschrijft vóór serverdata gemerged is
       if (_notesSyncedOnce && Object.keys(notesAcc).length > 0) {

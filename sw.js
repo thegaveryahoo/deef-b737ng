@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.18
-// v4.18: PIN vergeten knop + resetPin functie
-const CACHE = 'b737-trainer-v4.18';
+// B737NG Flashcard Trainer - Service Worker v4.19
+// v4.19: menu-layout fix, voortgangsbalk tijdens sessie
+const CACHE = 'b737-trainer-v4.19';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

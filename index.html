@@ -383,6 +383,18 @@
     </button>
   </div>
 
+  <!-- Sessie-filter grid: Goed + Nog te doen -->
+  <div class="grid grid-cols-2 gap-2 mb-4">
+    <button onclick="startSession('good')" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">🟢</span><span class="font-bold">Goed</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-good-count"></div>
+    </button>
+    <button onclick="startSession('new')"  class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
+      <span class="text-base mr-1.5">📌</span><span class="font-bold">Nog te doen</span>
+      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-new-count"></div>
+    </button>
+  </div>
+
   <!-- Gemarkeerde kaarten -->
   <button id="btn-flagged" onclick="startSession('flagged')" class="w-full mb-3 p-3 flex items-center justify-between bg-amber-950 hover:bg-amber-900 active:scale-[0.98] border border-amber-800/50 text-amber-200 rounded-[18px] transition-all hidden">
     <div class="flex items-center gap-3">
@@ -394,18 +406,6 @@
     </div>
     <span class="text-amber-500 text-xs font-bold shrink-0" id="lbl-flagged-count"></span>
   </button>
-
-  <!-- Sessie-filter grid: Goed + Nog te doen -->
-  <div class="grid grid-cols-2 gap-2 mb-3">
-    <button onclick="startSession('good')" class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
-      <span class="text-base mr-1.5">🟢</span><span class="font-bold">Goed</span>
-      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-good-count"></div>
-    </button>
-    <button onclick="startSession('new')"  class="btn-session bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300">
-      <span class="text-base mr-1.5">📌</span><span class="font-bold">Nog te doen</span>
-      <div class="text-xs font-normal text-zinc-600 mt-0.5" id="lbl-new-count"></div>
-    </button>
-  </div>
 
   <!-- Naslag + Kaart toevoegen -->
   <div class="grid grid-cols-3 gap-2 mb-4">
@@ -453,6 +453,14 @@
 
 <!-- ===================== STUDY SCREEN ===================== -->
 <div id="screen-study" class="screen hidden max-w-3xl mx-auto px-4 py-4">
+
+  <!-- Voortgangsbalk (zelfde als hoofdmenu: Slecht/Mwah/Goed/Nog te doen) -->
+  <div class="flex gap-1 h-1.5 rounded-full overflow-hidden mb-1" id="study-category-bar">
+    <div id="study-bar-bad"  class="transition-all duration-500" style="width:0%;background:#dc2626"></div>
+    <div id="study-bar-mwah" class="transition-all duration-500" style="width:0%;background:#f59e0b"></div>
+    <div id="study-bar-good" class="transition-all duration-500" style="width:0%;background:#10b981"></div>
+    <div id="study-bar-new"  class="transition-all duration-500" style="width:100%;background:#3f3f46"></div>
+  </div>
 
   <!-- Sessievoortgangsbalk -->
   <div class="w-full h-1.5 bg-zinc-800 rounded-full mb-2 overflow-hidden">
@@ -955,7 +963,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.18";
+const APP_VERSION = "4.19";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1628,6 +1636,15 @@ function showCurrentCard() {
   if (isFlaggedSession) updateFlaggedNavButtons();
   // G/M/B sessieteller verbergen in flagged mode
   document.getElementById('session-score-row').style.display = isFlaggedSession ? 'none' : '';
+
+  // Voortgangsbalk bijwerken (zelfde als hoofdmenu)
+  const _total = cards.length;
+  if (_total > 0) {
+    document.getElementById('study-bar-bad').style.width  = (cards.filter(c => c.lastScore === 'bad').length  / _total * 100) + '%';
+    document.getElementById('study-bar-mwah').style.width = (cards.filter(c => c.lastScore === 'mwah').length / _total * 100) + '%';
+    document.getElementById('study-bar-good').style.width = (cards.filter(c => c.lastScore === 'good').length / _total * 100) + '%';
+    document.getElementById('study-bar-new').style.width  = (cards.filter(c => !c.lastScore).length           / _total * 100) + '%';
+  }
 
   // Check if done
   if (session.index >= session.queue.length) {

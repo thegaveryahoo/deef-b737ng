@@ -75,10 +75,10 @@
     .pin-dot.error  { background: #ef4444; border-color: #ef4444; }
     .pin-btn {
       padding: 1.1rem 0; font-size: 1.5rem; font-weight: 700;
-      border-radius: 18px; background: #18181b; color: #e4e4e7;
-      border: 1.5px solid #27272a; transition: background 0.1s, transform 0.1s;
+      border-radius: 18px; background: var(--panel); color: var(--text);
+      border: 1.5px solid var(--border2); transition: background 0.1s, transform 0.1s;
     }
-    .pin-btn:active { background: #27272a; transform: scale(0.93); }
+    .pin-btn:active { background: var(--panel2); transform: scale(0.93); }
 
     /* Rating buttons */
     .btn-rate {
@@ -105,13 +105,13 @@
 
     /* Flip button */
     .btn-flip {
-      background: white;
-      color: #09090b;
+      background: var(--flip-bg, white);
+      color: var(--flip-text, #09090b);
       font-weight: 800;
       font-size: 1.3rem;
       padding: 1.1rem 3rem;
       border-radius: 22px;
-      box-shadow: 0 4px 20px rgba(255,255,255,0.15);
+      box-shadow: 0 4px 20px var(--flip-glow, rgba(255,255,255,0.15));
       transition: transform 0.1s, filter 0.1s;
     }
     .btn-flip:active { transform: scale(0.96); }
@@ -132,11 +132,11 @@
 
     /* Stat tile */
     .stat-tile {
-      background: #18181b;
+      background: var(--panel);
       border-radius: 22px;
       padding: 1.25rem 0.75rem;
       text-align: center;
-      border: 1px solid #27272a;
+      border: 1px solid var(--border);
     }
 
     /* Achtergrond icoon watermark (dashboard + PIN) */
@@ -180,6 +180,57 @@
     }
     .pin-bg > * { position: relative; z-index: 1; }
 
+    /* ============================================================
+       THEMA-SYSTEEM — 4 modi via html[data-theme]
+       donker (default) · blauw · licht · contrast
+       ============================================================ */
+    :root, html[data-theme="dark"] {
+      --bg:#09090b; --panel:#18181b; --panel2:#27272a; --panel3:#3f3f46;
+      --text:#fafafa; --text2:#e4e4e7; --muted:#a1a1aa; --muted2:#71717a;
+      --border:#27272a; --border2:#3f3f46; --accent:#fb923c;
+    }
+    html[data-theme="blue"] {
+      --bg:#162545; --panel:#1d2c4f; --panel2:#26365c; --panel3:#2f3f66;
+      --text:#eef1f8; --text2:#c4cce0; --muted:#94a0bd; --muted2:#7682a0;
+      --border:#2e3e60; --border2:#3a4a6e; --accent:#fb923c;
+    }
+    html[data-theme="light"] {
+      --bg:#eceef3; --panel:#ffffff; --panel2:#f3f4f7; --panel3:#e6e8ee;
+      --text:#181b22; --text2:#2d323c; --muted:#5b6270; --muted2:#7a818f;
+      --border:#d6d9e0; --border2:#c4c8d2; --accent:#ea580c;
+    }
+    html[data-theme="contrast"] {
+      --bg:#000000; --panel:#000000; --panel2:#0c0c0c; --panel3:#1a1a1a;
+      --text:#ffffff; --text2:#ffffff; --muted:#ffe600; --muted2:#ffd400;
+      --border:#ffffff; --border2:#ffe600; --accent:#ffe600;
+    }
+    body { background-color: var(--bg) !important; color: var(--text);
+           transition: background-color .25s ease, color .25s ease; }
+    .bg-zinc-950 { background-color: var(--bg) !important; }
+    .bg-zinc-900 { background-color: var(--panel) !important; }
+    .bg-zinc-800 { background-color: var(--panel2) !important; }
+    .bg-zinc-700 { background-color: var(--panel3) !important; }
+    .text-white  { color: var(--text) !important; }
+    .text-zinc-200, .text-zinc-300 { color: var(--text2) !important; }
+    .text-zinc-400 { color: var(--muted) !important; }
+    .text-zinc-500, .text-zinc-600, .text-zinc-700 { color: var(--muted2) !important; }
+    .border-zinc-800 { border-color: var(--border) !important; }
+    .border-zinc-700, .border-zinc-600, .border-zinc-500 { border-color: var(--border2) !important; }
+    .btn-rate { color:#fff !important; }
+    /* "Toon antwoord"-knop oranje in blauw + donker (minder fel 's avonds) */
+    html[data-theme="blue"] .btn-flip, html[data-theme="dark"] .btn-flip {
+      --flip-bg:#fb923c; --flip-text:#1a1206; --flip-glow:rgba(251,146,60,.30);
+    }
+    /* Thema-toggle: zichtbaar op elk scherm */
+    #theme-toggle {
+      position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 60;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--panel2); color: var(--accent); border: 1.5px solid var(--border2);
+      font-size: 1.3rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.35); cursor: pointer; transition: transform .1s ease, background .2s ease;
+    }
+    #theme-toggle:active { transform: scale(.9); }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -200,8 +251,8 @@
       .modal-backdrop { align-items: center; }
     }
     .modal-box {
-      background: #18181b;
-      border: 1px solid #3f3f46;
+      background: var(--panel);
+      border: 1px solid var(--border2);
       border-radius: 28px;
       padding: 2rem;
       width: 100%;
@@ -227,8 +278,8 @@
     /* Card ID badge */
     .card-badge {
       display: inline-block;
-      background: #27272a;
-      color: #a1a1aa;
+      background: var(--panel3);
+      color: var(--muted);
       font-size: 0.75rem;
       font-weight: 600;
       padding: 0.25rem 0.65rem;
@@ -240,8 +291,13 @@
     .text-card-display mark { background-color: #fbbf24; color: #111827; border-radius: 2px; padding: 0 2px; }
     [contenteditable][data-placeholder]:empty:before { content: attr(data-placeholder); color: #52525b; pointer-events: none; display: block; }
   </style>
+  <!-- Thema instellen vóór de eerste paint (voorkomt flits) -->
+  <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('b737_theme')||'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
 </head>
 <body class="bg-zinc-950 text-white">
+
+<!-- Thema-toggle: donker → blauw → licht → contrast -->
+<button id="theme-toggle" onclick="cycleTheme()" title="Wissel weergave (donker / blauw / licht / contrast)" aria-label="Wissel weergave">🌙</button>
 
 <!-- ===================== BOOT LOADER ===================== -->
 <div id="screen-boot" class="screen flex items-center justify-center" style="min-height:100dvh">
@@ -502,7 +558,7 @@
            onclick="flipCard()"
            title="Tik om te flippen">
       <div id="card-text-front" class="text-card-display hidden"></div>
-      <p class="text-center text-zinc-600 text-xs mt-2">Tik om te flippen · Swipe → = vorige kaart · Swipe ← = overslaan</p>
+      <p class="text-center text-zinc-600 text-xs mt-2">Tik om te flippen · Swipe → = vorige · Swipe ← = volgende</p>
     </div>
 
     <!-- BOTH SIDES VIEW -->
@@ -546,7 +602,7 @@
 
   <!-- Rating buttons (shown after flip, hidden in flagged mode) -->
   <div id="rating-area" class="hidden mt-2">
-    <div class="text-center text-xs text-zinc-600 mb-3">Swipe ← voor Slecht · Swipe → voor Goed · of gebruik de knoppen:</div>
+    <div class="text-center text-xs text-zinc-600 mb-3">Beoordeel met de knoppen · swipe = bladeren tussen kaarten</div>
     <div class="flex gap-3">
       <button onclick="rateAndNext('bad')"  class="btn-rate bg-red-700 hover:bg-red-600">SLECHT</button>
       <button onclick="rateAndNext('mwah')" class="btn-rate bg-amber-600 hover:bg-amber-500">MWAH</button>
@@ -963,7 +1019,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.21";
+const APP_VERSION = "4.22";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1887,19 +1943,12 @@ function resetCurrentCardStats() {
     const ratingVisible = !document.getElementById('rating-area').classList.contains('hidden');
     const frontVisible  = !document.getElementById('view-front').classList.contains('hidden');
 
-    if (isHorizSwipe && ratingVisible) {
-      if (dx < 0) rateAndNext('bad');
-      else rateAndNext('good');
-    } else if (isHorizSwipe && frontVisible) {
+    if (isHorizSwipe) {
+      // Swipe = ALLEEN bladeren (nooit beoordelen — dat gaf onbedoelde scores).
+      // Rechts = vorige kaart, links = volgende kaart. Geldt in beide weergaven.
       if (dx > 0) {
-        // Swipe rechts op voorzijde = terug naar vorige kaart
-        if (session.index > 0) {
-          session.index--;
-          showCurrentCard();
-        }
-      }
-      // Swipe links op voorzijde = overslaan (geen beoordeling)
-      else {
+        if (session.index > 0) { session.index--; showCurrentCard(); }
+      } else {
         session.index++;
         showCurrentCard();
       }
@@ -3145,8 +3194,34 @@ async function reindexCard(card) {
 }
 
 // =====================================================================
+// THEMA-SYSTEEM — 4 modi, gekozen thema in localStorage
+// =====================================================================
+const THEME_KEY    = 'b737_theme';
+const THEMES       = ['dark', 'blue', 'light', 'contrast'];
+const THEME_LABELS = { dark: 'Donker', blue: 'Blauw', light: 'Licht', contrast: 'Hoog contrast' };
+const THEME_ICONS  = { dark: '🌙', blue: '🌊', light: '☀️', contrast: '◑' };
+
+function applyTheme(name) {
+  if (!THEMES.includes(name)) name = 'dark';
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem(THEME_KEY, name);
+  const tc = document.getElementById('theme-toggle');
+  if (tc) tc.textContent = THEME_ICONS[name];
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  if (meta && bg) meta.setAttribute('content', bg);
+}
+function cycleTheme() {
+  const cur  = localStorage.getItem(THEME_KEY) || 'dark';
+  const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+  applyTheme(next);
+  if (typeof showToast === 'function') showToast('Weergave: ' + THEME_LABELS[next]);
+}
+
+// =====================================================================
 // BOOT
 // =====================================================================
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 loadData();
 loadNotesAcc(); // laad persistente notities-accumulator na loadData
 loadMetadata();

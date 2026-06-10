@@ -1,6 +1,6 @@
-// B737NG Flashcard Trainer - Service Worker v4.21
-// v4.21: groene balk toont totale voortgang (zelfde als hoofdmenu)
-const CACHE = 'b737-trainer-v4.21';
+// B737NG Flashcard Trainer - Service Worker v4.22
+// v4.22: 4-thema toggle (donker/blauw/licht/contrast) + swipe beoordeelt niet meer (alleen bladeren)
+const CACHE = 'b737-trainer-v4.22';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

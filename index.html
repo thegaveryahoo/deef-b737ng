@@ -1019,7 +1019,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.22";
+const APP_VERSION = "4.23";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1608,7 +1608,10 @@ function startSession(type, forceNew = false) {
 }
 
 function saveSuperSession() {
-  if (session && session.type === 'super') localStorage.setItem(SUPER_SESSION_KEY, JSON.stringify(session));
+  if (session && session.type === 'super') {
+    session.updatedAt = new Date().toISOString(); // tijdstempel voor cross-device sync (nieuwste wint)
+    localStorage.setItem(SUPER_SESSION_KEY, JSON.stringify(session));
+  }
 }
 function loadSuperSession() {
   try { const r = localStorage.getItem(SUPER_SESSION_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
@@ -1711,6 +1714,7 @@ function showCurrentCard() {
   const card = getCard(session.queue[session.index]);
   if (!card) {
     session.index++;
+    if (session.type === 'super') saveSuperSession();
     showCurrentCard();
     return;
   }
@@ -1843,6 +1847,7 @@ function rateAndNext(score) {
   setTimeout(() => {
     swipeArea.classList.remove('swiping-left', 'swiping-right');
     session.index++;
+    if (session.type === 'super') saveSuperSession(); // positie (incl. tijdstempel) opslaan voor sync
     showCurrentCard();
   }, 200);
 }
@@ -2657,6 +2662,33 @@ async function syncWithServer() {
           }
           return;
         }
+        // Speciale supercyclus-positie — neem de positie van het nieuwste (laatst-gesynkte) toestel over
+        if (remote.id === '_super_session') {
+          if (remote.front) {
+            try {
+              const remoteSS = JSON.parse(remote.front);
+              const remoteAt = remoteSS.updatedAt ? new Date(remoteSS.updatedAt).getTime() : 0;
+              const localRaw = localStorage.getItem(SUPER_SESSION_KEY);
+              const localSS  = localRaw ? JSON.parse(localRaw) : null;
+              const localAt  = localSS && localSS.updatedAt ? new Date(localSS.updatedAt).getTime() : 0;
+              // Nieuwste wint; en nooit een positie van vóór een lokale (super)reset terugzetten.
+              if (remoteSS.queue && remoteSS.queue.length && remoteAt > localAt && remoteAt > resetAt) {
+                const adopted = {
+                  type: 'super', queue: remoteSS.queue, index: remoteSS.index || 0,
+                  startedAt: (localSS && localSS.startedAt) || Date.now(),
+                  good: (localSS && localSS.good) || 0, mwah: (localSS && localSS.mwah) || 0, bad: (localSS && localSS.bad) || 0,
+                  updatedAt: remoteSS.updatedAt
+                };
+                localStorage.setItem(SUPER_SESSION_KEY, JSON.stringify(adopted));
+                if (session && session.type === 'super') {
+                  session.queue = adopted.queue; session.index = adopted.index; session.updatedAt = adopted.updatedAt;
+                }
+                changed = true;
+              }
+            } catch(e) { console.warn('_super_session parse fout:', e); }
+          }
+          return;
+        }
         const local = getCard(remote.id);
         if (local) {
           const lt = local.lastReviewed  ? new Date(local.lastReviewed).getTime()  : 0;
@@ -2817,6 +2849,24 @@ async function pushToServer(silent = false) {
           keywords: '', back: undefined, imageUpdatedAt: null
         });
       }
+      // Voeg supercyclus-positie toe (queue + index) zodat je op elk apparaat verdergaat
+      // waar je het laatst gebleven was. De nieuwste updatedAt wint bij het mergen.
+      try {
+        const ssRaw = localStorage.getItem(SUPER_SESSION_KEY);
+        if (ssRaw) {
+          const ss = JSON.parse(ssRaw);
+          if (ss && Array.isArray(ss.queue) && ss.queue.length) {
+            const ssAt = ss.updatedAt || new Date().toISOString();
+            cardList.push({
+              id: '_super_session',
+              front: JSON.stringify({ queue: ss.queue, index: ss.index || 0, updatedAt: ssAt }),
+              lastReviewed: ssAt,
+              goodCount: 0, mwahCount: 0, badCount: 0,
+              lastScore: null, reviews: 0, nextDue: 0, custom: false, keywords: '', back: undefined, imageUpdatedAt: null
+            });
+          }
+        }
+      } catch(e) {}
       return cardList;
     })()
   };

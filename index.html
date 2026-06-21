@@ -1019,7 +1019,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.23";
+const APP_VERSION = "4.24";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -2670,9 +2670,14 @@ async function syncWithServer() {
               const remoteAt = remoteSS.updatedAt ? new Date(remoteSS.updatedAt).getTime() : 0;
               const localRaw = localStorage.getItem(SUPER_SESSION_KEY);
               const localSS  = localRaw ? JSON.parse(localRaw) : null;
-              const localAt  = localSS && localSS.updatedAt ? new Date(localSS.updatedAt).getTime() : 0;
-              // Nieuwste wint; en nooit een positie van vóór een lokale (super)reset terugzetten.
-              if (remoteSS.queue && remoteSS.queue.length && remoteAt > localAt && remoteAt > resetAt) {
+              const localIdx = localSS ? (localSS.index || 0) : -1;
+              const localInProg = !!(localSS && Array.isArray(localSS.queue) && (localSS.index || 0) < localSS.queue.length);
+              const remoteIdx = remoteSS.index || 0;
+              const remoteInProg = remoteIdx < remoteSS.queue.length;
+              // Verlies-bestendig: neem een remote positie alleen over als die VERDER is (hogere index)
+              // dan lokaal, óf als er lokaal geen actieve cyclus loopt. Een verse/lagere positie (bv. een
+              // net gestarte cyclus elders) overschrijft je voortgang dus nooit. resetAt-vangnet blijft.
+              if (remoteSS.queue && remoteSS.queue.length && remoteInProg && remoteAt > resetAt && (!localInProg || remoteIdx > localIdx)) {
                 const adopted = {
                   type: 'super', queue: remoteSS.queue, index: remoteSS.index || 0,
                   startedAt: (localSS && localSS.startedAt) || Date.now(),

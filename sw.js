@@ -1,7 +1,8 @@
-// B737NG Flashcard Trainer - Service Worker v4.23
+// B737NG Flashcard Trainer - Service Worker v4.24
 // v4.22: 4-thema toggle (donker/blauw/licht/contrast) + swipe beoordeelt niet meer (alleen bladeren)
-// v4.23: supercyclus-positie (queue + index) synct nu tussen apparaten (nieuwste wint)
-const CACHE = 'b737-trainer-v4.23';
+// v4.23: supercyclus-positie (queue + index) synct nu tussen apparaten
+// v4.24: verlies-bestendige positie-sync (verste voortgang wint, geen reset door verse cyclus elders)
+const CACHE = 'b737-trainer-v4.24';
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
 

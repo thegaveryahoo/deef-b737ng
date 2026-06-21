@@ -3,7 +3,8 @@
 // v4.23: supercyclus-positie (queue + index) synct nu tussen apparaten
 // v4.24: verlies-bestendige positie-sync (verste voortgang wint, geen reset door verse cyclus elders)
 // v4.25: prio-kaarten + prio-gate, SIMSESSIES, info-labels, 2 nieuwe kaarten (RA FAIL/EVAC), 29-3 front
-const CACHE = 'b737-trainer-v4.25';
+// v4.26: supercyclus terug naar origineel algoritme; 2e supercyclus 'Simsessies (prio)' met eigen progressiebalk
+const CACHE = 'b737-trainer-v4.26';
 const TOTAL_PAGES = 39;
 const CARDS_PER_PAGE = 5;
 

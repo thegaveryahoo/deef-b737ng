@@ -427,6 +427,33 @@
     <button id="btn-new-super" onclick="startNewSuperSession()" class="text-xs text-emerald-700 hover:text-emerald-400 underline transition-colors hidden">Nieuwe supercyclus starten</button>
   </div>
 
+  <!-- 2e supercyclus: alleen prio-kaarten (sim-scenario's) + eigen progressiebalk -->
+  <button id="btn-super-prio" onclick="startSession('super-prio')" class="w-full mb-1 p-4 flex items-center justify-between bg-indigo-900 hover:bg-indigo-800 active:scale-[0.98] border border-indigo-700 text-indigo-200 rounded-[22px] transition-all">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🎯</span>
+      <div class="text-left">
+        <div class="font-black text-base leading-tight">Supercyclus — Simsessies</div>
+        <div class="text-xs font-normal text-indigo-400/70 mt-0.5" id="lbl-super-prio-sub">Alleen de prio-kaarten (sim-scenario's)</div>
+      </div>
+    </div>
+    <span class="text-indigo-400 text-xs font-bold shrink-0">prio</span>
+  </button>
+  <div class="bg-indigo-950/40 border border-indigo-900/40 rounded-2xl px-4 py-2.5 mb-1">
+    <div class="flex justify-between text-xs font-semibold mb-1.5">
+      <span class="text-indigo-400/80">Prio-voortgang</span>
+      <span class="text-indigo-300" id="prio-progress-text">0 / 64</span>
+    </div>
+    <div class="flex gap-1 h-1.5 rounded-full overflow-hidden">
+      <div id="prio-bar-bad"  class="transition-all duration-500" style="width:0%;background:#dc2626"></div>
+      <div id="prio-bar-mwah" class="transition-all duration-500" style="width:0%;background:#f59e0b"></div>
+      <div id="prio-bar-good" class="transition-all duration-500" style="width:0%;background:#10b981"></div>
+      <div id="prio-bar-new"  class="transition-all duration-500" style="width:100%;background:#3f3f46"></div>
+    </div>
+  </div>
+  <div class="flex justify-end mb-3">
+    <button id="btn-new-super-prio" onclick="startNewPrioSuperSession()" class="text-xs text-indigo-700 hover:text-indigo-400 underline transition-colors hidden">Nieuwe prio-supercyclus</button>
+  </div>
+
   <!-- Sessie-filter grid: Slecht + Mwah -->
   <div class="grid grid-cols-2 gap-2 mb-3">
     <button onclick="startSession('bad')"  class="btn-session bg-red-950  hover:bg-red-900  border border-red-900/50  text-red-300">
@@ -1047,7 +1074,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.25";
+const APP_VERSION = "4.26";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1058,10 +1085,8 @@ const PRIORITY_CARDS = new Set(["03-1","04-2","04-3","04-4","05-3","05-4","06-2"
 const PRIORITY_INFO = {"13-2":"Sim #5 #6 #7'23 #12 · on ground","13-4":"Sim #5 · on ground","24-3":"Sim #5'23 · on ground","34-2":"Sim #1 #4 #5 #6 #9 #3'23 #4'23 #6'23 #7'23 #12 · takeoff roll","14-1":"Sim #1 #12 · takeoff roll / final app","24-2":"Sim #2 #11 · takeoff roll","22-1":"Sim #2 #11 · after t/o / climbout","19-4":"Sim #2 #4 #9 #11 · after t/o / climbout / cruise","08-4":"Sim #2 #4 #6 #9 #11 · cruise / descent","24-5":"Sim #2 #4 #9 #11 · descent","19-3":"Sim #2 #11 · holding / descent","06-3":"Sim #3 #5'23 #13 · takeoff roll / cruise","18-5":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","19-2":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","26-1":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","32-2":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","08-1":"Sim #3 #5 #6'23 #E · cruise","16-1":"Sim #3 #5 #6'23 #12 #13 #E · takeoff roll / cruise","16-2":"Sim #3 #4 #5 #6'23 · cruise","16-3":"Sim #5 #2'23 #3'23 #5'23 #13 #E · climbout / cruise","24-1":"Sim #3 #5 #6'23 #13 · climbout / cruise","03-1":"Sim #3 #5 #6'23 #13 · climbout / cruise / descent","29-4":"Sim #3 #12 #13 #E · climbout / cruise","30-5":"Sim #4 #10 · after t/o / approach","31-5":"Sim #4 #10 · after t/o / approach","11-3":"Sim #4 #6 · cruise","13-1":"Sim #4 #6 · cruise","26-3":"Sim #4 #10 · approach","22-3":"Sim #4 #10 #2'23 · after t/o / approach","22-4":"Sim #4 #10 · landing","17-4":"Sim #5 #6'23 #7'23 · climbout / cruise / final app","05-3":"Sim #5 · cruise","05-4":"Sim #5 · cruise","12-2":"Sim #5 #8 · cruise","29-3":"Sim #5 #8 · cruise","35-4":"Sim #5 #8 · cruise","26-2":"Sim #5 #5'23 #7'23 · cruise / descent / landing","06-2":"Sim #5 · descent","21-3":"Sim #5 · approach","20-4":"Sim #5 · approach","07-4":"Sim #5 #8 #4'23 · after t/o / climbout / cruise","11-1":"Sim #5 #6 · cruise","33-4":"Sim #6 · cruise","08-2":"Sim #6 · cruise","08-3":"Sim #6 · cruise","08-5":"Sim #6 #9 · cruise / descent","10-3":"Sim #6 #9 · cruise / descent","09-2":"Sim #6 · cruise","20-2":"Sim #6 · cruise","21-5":"Sim #2'23 #E · climbout","21-4":"Sim #5'23 #12 #E · approach / climbout","12-5":"Sim #13 · cruise","13-3":"Sim #13 · cruise","30-1":"Sim #13 · cruise","31-3":"Sim #13 · cruise","31-4":"Sim #13 · cruise","14-5":"Sim #13 · approach","04-3":"Sim #5'23 · climbout","04-4":"Sim #5'23 · climbout","04-2":"Sim #5'23 · climbout","21-2":"Sim #10 · takeoff roll","33-5":"Sim #1 · cruise","39-1":"Sim #6 · taxi / dispatch","39-2":"Sim #5 #5'23 #6'23 #7'23 · on ground"};
 const SIM_SESSIONS = {"1":["14-1","33-5","34-2"],"2":["08-4","18-5","19-2","19-3","19-4","22-1","24-2","24-5","26-1","32-2"],"2-23":["16-3","21-5","22-3"],"3":["03-1","06-3","08-1","16-1","16-2","18-5","19-2","24-1","26-1","29-4","32-2"],"3-23":["16-3","18-5","19-2","26-1","32-2","34-2"],"4":["08-4","11-3","13-1","16-2","19-4","22-3","22-4","24-5","26-3","30-5","31-5","34-2"],"4-23":["07-4","34-2"],"5":["03-1","05-3","05-4","06-2","07-4","08-1","11-1","12-2","13-2","13-4","16-1","16-2","16-3","17-4","20-4","21-3","24-1","26-2","29-3","34-2","35-4","39-2"],"5-23":["04-2","04-3","04-4","06-3","16-3","21-4","24-3","26-2","39-2"],"6":["08-2","08-3","08-4","08-5","09-2","10-3","11-1","11-3","13-1","13-2","20-2","33-4","34-2","39-1"],"6-23":["03-1","08-1","16-1","16-2","17-4","18-5","19-2","24-1","26-1","32-2","34-2","39-2"],"7-23":["13-2","17-4","26-2","34-2","39-2"],"8":["07-4","12-2","29-3","35-4"],"9":["08-4","08-5","10-3","19-4","24-5","34-2"],"10":["21-2","22-3","22-4","26-3","30-5","31-5"],"11":["08-4","18-5","19-2","19-3","19-4","22-1","24-2","24-5","26-1","32-2"],"12":["13-2","14-1","16-1","21-4","29-4","34-2"],"13":["03-1","06-3","12-5","13-3","14-5","16-1","16-3","18-5","19-2","24-1","26-1","29-4","30-1","31-3","31-4","32-2"],"E":["08-1","16-1","16-3","21-4","21-5","29-4"]};
 function isPrioCard(c){ return !!c && PRIORITY_CARDS.has(c.id); }
-function prioUrgencySort(seenCount){
+function urgencySort(seenCount){  // originele supercyclus-sort: nieuw → meest overdue → random
   return (a,b)=>{
-    const aP=isPrioCard(a)&&a.lastScore!=='good', bP=isPrioCard(b)&&b.lastScore!=='good';
-    if(aP!==bP) return aP?-1:1;                 // prio-niet-groen eerst
     const aN=!a.lastScore, bN=!b.lastScore;
     if(aN!==bN) return aN?-1:1;                 // nieuw eerst
     const aD=(a.nextDue||0)-seenCount, bD=(b.nextDue||0)-seenCount;
@@ -1074,6 +1099,7 @@ function simLabel(sid){ return sid==='E' ? '#E' : (/-23$/.test(sid) ? '#'+sid.sl
 
 const SESSION_LABELS = {
   super:   "Supercyclus",
+  'super-prio': "Supercyclus Simsessies",
   bad:     "Slecht sessie",
   mwah:    "Mwah sessie",
   good:    "Goed sessie",
@@ -1550,6 +1576,26 @@ function updateDashboard() {
     }
     if (btnNewSuper) btnNewSuper.classList.toggle('hidden', !hasActive);
   }
+  // Prio-supercyclus: eigen progressiebalk + knoplabel
+  const prioCards = cards.filter(isPrioCard);
+  const pTot  = prioCards.length || 1;
+  const pBad  = prioCards.filter(c => c.lastScore === 'bad').length;
+  const pMwah = prioCards.filter(c => c.lastScore === 'mwah').length;
+  const pGood = prioCards.filter(c => c.lastScore === 'good').length;
+  const pNew  = prioCards.filter(c => !c.lastScore).length;
+  const _setW = (id, w) => { const e = document.getElementById(id); if (e) e.style.width = w + '%'; };
+  _setW('prio-bar-bad',  pBad  / pTot * 100); _setW('prio-bar-mwah', pMwah / pTot * 100);
+  _setW('prio-bar-good', pGood / pTot * 100); _setW('prio-bar-new',  pNew  / pTot * 100);
+  const ppt = document.getElementById('prio-progress-text');
+  if (ppt) ppt.textContent = `${pGood} / ${prioCards.length} groen`;
+  const savedPrio = loadSuperSession('super-prio');
+  const prioSub = document.getElementById('lbl-super-prio-sub');
+  const btnNewPrio = document.getElementById('btn-new-super-prio');
+  const hasPrioActive = savedPrio && savedPrio.index < savedPrio.queue.length;
+  if (prioSub) prioSub.textContent = hasPrioActive
+    ? `${savedPrio.index}/${savedPrio.queue.length} · ${Math.round(savedPrio.index / savedPrio.queue.length * 100)}% gedaan`
+    : "Alleen de prio-kaarten (sim-scenario's)";
+  if (btnNewPrio) btnNewPrio.classList.toggle('hidden', !hasPrioActive);
   // Actieve sessie voortgangsbalk op dashboard
   const activeSession = (() => {
     try { return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY)); } catch(e) { return null; }
@@ -1616,18 +1662,21 @@ function getSessionQueue(type) {
     const set = new Set(SIM_SESSIONS[type.slice(4)] || []);
     pool = cards.filter(c => set.has(c.id));
     pool.forEach(c => c._rand = Math.random());
-    pool.sort(prioUrgencySort(seenCount));
+    pool.sort(urgencySort(seenCount));
+    return pool.map(c => c.id);
+  }
+  // Prio-supercyclus (2e supercyclus): ALLEEN de prio-kaarten (sim-scenario's), zelfde spaced repetition.
+  if (type === 'super-prio') {
+    pool = cards.filter(c => isPrioCard(c));
+    pool.forEach(c => c._rand = Math.random());
+    pool.sort(urgencySort(seenCount));
     return pool.map(c => c.id);
   }
   if (type === 'super') {
-    // Supercyclus met PRIO-GATE: zolang er een prio-kaart ROOD of NIEUW is, bevat de
-    // cyclus ALLEEN die prio-kaarten (drempel "niet meer rood"). Daarna komt de rest,
-    // maar prio-kaarten houden voorrang tot ze GROEN zijn. Sort: prio-niet-groen → nieuw
-    // → meest overdue. (rood ~30 / oranje ~60 / groen 120-760 via INTERVALS.)
-    const prioBlocking = cards.filter(c => isPrioCard(c) && (c.lastScore === 'bad' || !c.lastScore));
-    pool = prioBlocking.length ? prioBlocking : [...cards];
+    // Originele supercyclus: alle kaarten op urgentie (nieuw eerst → meest overdue → random).
+    pool = [...cards];
     pool.forEach(c => c._rand = Math.random());
-    pool.sort(prioUrgencySort(seenCount));
+    pool.sort(urgencySort(seenCount));
   } else if (type === 'bad')  { pool = cards.filter(c => c.lastScore === 'bad');  }
   else if (type === 'mwah')   { pool = cards.filter(c => c.lastScore === 'mwah'); }
   else if (type === 'good')   { pool = cards.filter(c => c.lastScore === 'good'); }
@@ -1645,13 +1694,9 @@ function getSessionQueue(type) {
 
 function startSession(type, forceNew = false) {
   let resumeState = null;
-  if (type === 'super' && !forceNew) {
-    const saved = loadSuperSession();
+  if ((type === 'super' || type === 'super-prio') && !forceNew) {
+    const saved = loadSuperSession(type);
     if (saved && saved.index < saved.queue.length) resumeState = saved;
-  }
-  // PRIO-GATE heeft voorrang: zolang er rode/nieuwe prio-kaarten zijn, drill die eerst.
-  if (type === 'super' && cards.some(c => isPrioCard(c) && (c.lastScore === 'bad' || !c.lastScore))) {
-    resumeState = null;
   }
   if (resumeState) {
     session = resumeState;
@@ -1659,24 +1704,26 @@ function startSession(type, forceNew = false) {
     const queue = getSessionQueue(type);
     if (queue.length === 0) { showToast(`Geen kaarten voor "${SESSION_LABELS[type] || type}"`); return; }
     session = { type, queue, index: 0, startedAt: Date.now(), good: 0, mwah: 0, bad: 0 };
-    if (type === 'super') saveSuperSession();
+    if (type === 'super' || type === 'super-prio') saveSuperSession();
   }
   document.getElementById('screen-dashboard').classList.add('hidden');
   document.getElementById('screen-study').classList.remove('hidden');
   showCurrentCard();
 }
 
+function _superKey(type) { return type === 'super-prio' ? PRIO_SUPER_SESSION_KEY : SUPER_SESSION_KEY; }
 function saveSuperSession() {
-  if (session && session.type === 'super') {
+  if (session && (session.type === 'super' || session.type === 'super-prio')) {
     session.updatedAt = new Date().toISOString(); // tijdstempel voor cross-device sync (nieuwste wint)
-    localStorage.setItem(SUPER_SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(_superKey(session.type), JSON.stringify(session));
   }
 }
-function loadSuperSession() {
-  try { const r = localStorage.getItem(SUPER_SESSION_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+function loadSuperSession(type) {
+  try { const r = localStorage.getItem(_superKey(type || 'super')); return r ? JSON.parse(r) : null; } catch(e) { return null; }
 }
-function clearSuperSession() { localStorage.removeItem(SUPER_SESSION_KEY); }
-function startNewSuperSession() { clearSuperSession(); startSession('super', true); }
+function clearSuperSession(type) { localStorage.removeItem(_superKey(type || 'super')); }
+function startNewSuperSession() { clearSuperSession('super'); startSession('super', true); }
+function startNewPrioSuperSession() { clearSuperSession('super-prio'); startSession('super-prio', true); }
 
 function toggleFlagCard() {
   if (!session || session.index >= session.queue.length) return;
@@ -1755,13 +1802,14 @@ function showCurrentCard() {
   // G/M/B sessieteller verbergen in flagged mode
   document.getElementById('session-score-row').style.display = isFlaggedSession ? 'none' : '';
 
-  // Voortgangsbalk bijwerken (zelfde als hoofdmenu)
-  const _total = cards.length;
+  // Voortgangsbalk — basis = prio-set bij de prio-supercyclus, anders alle kaarten
+  const _base = (session.type === 'super-prio') ? cards.filter(isPrioCard) : cards;
+  const _total = _base.length;
   if (_total > 0) {
-    document.getElementById('study-bar-bad').style.width  = (cards.filter(c => c.lastScore === 'bad').length  / _total * 100) + '%';
-    document.getElementById('study-bar-mwah').style.width = (cards.filter(c => c.lastScore === 'mwah').length / _total * 100) + '%';
-    document.getElementById('study-bar-good').style.width = (cards.filter(c => c.lastScore === 'good').length / _total * 100) + '%';
-    document.getElementById('study-bar-new').style.width  = (cards.filter(c => !c.lastScore).length           / _total * 100) + '%';
+    document.getElementById('study-bar-bad').style.width  = (_base.filter(c => c.lastScore === 'bad').length  / _total * 100) + '%';
+    document.getElementById('study-bar-mwah').style.width = (_base.filter(c => c.lastScore === 'mwah').length / _total * 100) + '%';
+    document.getElementById('study-bar-good').style.width = (_base.filter(c => c.lastScore === 'good').length / _total * 100) + '%';
+    document.getElementById('study-bar-new').style.width  = (_base.filter(c => !c.lastScore).length           / _total * 100) + '%';
   }
 
   // Check if done
@@ -1773,7 +1821,7 @@ function showCurrentCard() {
   const card = getCard(session.queue[session.index]);
   if (!card) {
     session.index++;
-    if (session.type === 'super') saveSuperSession();
+    if (session.type === 'super' || session.type === 'super-prio') saveSuperSession();
     showCurrentCard();
     return;
   }
@@ -1792,9 +1840,9 @@ function showCurrentCard() {
   document.getElementById('session-progress-label').textContent =
     `Kaart ${session.index + 1} / ${session.queue.length}`;
 
-  // Voortgangsbalk — zelfde als hoofdmenu: beoordeeld / totaal
-  const _done = cards.filter(c => c.lastScore).length;
-  const _pct  = cards.length > 0 ? (_done / cards.length) * 100 : 0;
+  // Voortgangsbalk: beoordeeld / totaal (prio-set bij de prio-supercyclus)
+  const _done = _base.filter(c => c.lastScore).length;
+  const _pct  = _total > 0 ? (_done / _total) * 100 : 0;
   document.getElementById('session-progress-bar').style.width = _pct + '%';
 
   // Sessie-teller
@@ -1904,7 +1952,7 @@ function rateAndNext(score) {
   updateStreak();
 
   saveData();
-  if (session && session.type === 'super') saveSuperSession();
+  if (session && (session.type === 'super' || session.type === 'super-prio')) saveSuperSession();
 
   // Visual feedback
   const swipeArea = document.getElementById('card-swipe-area');
@@ -1912,7 +1960,7 @@ function rateAndNext(score) {
   setTimeout(() => {
     swipeArea.classList.remove('swiping-left', 'swiping-right');
     session.index++;
-    if (session.type === 'super') saveSuperSession(); // positie (incl. tijdstempel) opslaan voor sync
+    if (session.type === 'super' || session.type === 'super-prio') saveSuperSession(); // positie (incl. tijdstempel) opslaan voor sync
     showCurrentCard();
   }, 200);
 }
@@ -1925,6 +1973,7 @@ function showSessionDone() {
 
   const type = session.type;
   const msgs = {
+    'super-prio': `${session.queue.length} prio-kaarten doorlopen. Top!`,
     super: `${session.queue.length} kaarten doorlopen. Tot de volgende keer!`,
     bad:   "Alle Slecht-kaarten beoordeeld. Goed gedaan!",
     mwah:  "Alle Mwah-kaarten beoordeeld. Goed gedaan!",
@@ -2419,6 +2468,7 @@ const PIN_LOCK_KEY    = 'b737_pin_lock';    // lockout vervaltijd
 const PIN_UNLOCK_KEY  = 'b737_pin_unlock';  // vrijgegeven tot (timestamp)
 const PIN_SESSION_MS  = 4 * 60 * 60 * 1000; // 4 uur
 const SUPER_SESSION_KEY  = 'b737_super_session';
+const PRIO_SUPER_SESSION_KEY = 'b737_prio_super_session';
 const ACTIVE_SESSION_KEY = 'b737_active_session'; // actieve sessie voor dashboard-voortgang
 const SYNC_TOKEN     = 'b737-davey-transavia-2026';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnC_pxvh0m576KbLyNKaxcoZK7WF3PqsaUvz7KYYMA3pTOZaYivB1jVZsxNZco99_L/exec';

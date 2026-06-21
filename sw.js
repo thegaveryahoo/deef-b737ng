@@ -2,8 +2,9 @@
 // v4.22: 4-thema toggle (donker/blauw/licht/contrast) + swipe beoordeelt niet meer (alleen bladeren)
 // v4.23: supercyclus-positie (queue + index) synct nu tussen apparaten
 // v4.24: verlies-bestendige positie-sync (verste voortgang wint, geen reset door verse cyclus elders)
-const CACHE = 'b737-trainer-v4.24';
-const TOTAL_PAGES = 38;
+// v4.25: prio-kaarten + prio-gate, SIMSESSIES, info-labels, 2 nieuwe kaarten (RA FAIL/EVAC), 29-3 front
+const CACHE = 'b737-trainer-v4.25';
+const TOTAL_PAGES = 39;
 const CARDS_PER_PAGE = 5;
 
 // Core app-bestanden + CDN-scripts + zoekindex — alle via Promise.allSettled (404 breekt install niet)

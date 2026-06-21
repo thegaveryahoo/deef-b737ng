@@ -463,6 +463,18 @@
     <span class="text-amber-500 text-xs font-bold shrink-0" id="lbl-flagged-count"></span>
   </button>
 
+  <!-- Simsessies -->
+  <button onclick="showSimScreen()" class="w-full mb-3 p-3 flex items-center justify-between bg-indigo-950 hover:bg-indigo-900 active:scale-[0.98] border border-indigo-800/50 text-indigo-200 rounded-[18px] transition-all">
+    <div class="flex items-center gap-3">
+      <span class="text-xl">🎮</span>
+      <div class="text-left">
+        <div class="font-bold text-sm leading-tight">Simsessies</div>
+        <div class="text-xs font-normal text-indigo-400/70 mt-0.5">Oefen per sim-sessie · alleen die scenario's</div>
+      </div>
+    </div>
+    <span class="text-indigo-400 text-lg shrink-0">→</span>
+  </button>
+
   <!-- Naslag + Kaart toevoegen -->
   <div class="grid grid-cols-3 gap-2 mb-4">
     <button onclick="showNalasScreen()" class="btn-session col-span-2 bg-sky-950 hover:bg-sky-900 border border-sky-800/50 text-sky-200">
@@ -544,6 +556,9 @@
     </div>
     <div></div>
   </div>
+
+  <!-- Prio info-label (sim-sessies + fase) -->
+  <div id="prio-info-label" class="hidden text-center text-[11px] tracking-wide text-amber-500/80 font-semibold mb-1.5 px-2"></div>
 
   <!-- Card area (swipeable) -->
   <div id="card-swipe-area" class="relative">
@@ -641,6 +656,19 @@
 
 </div>
 
+
+<!-- ===================== SIMSESSIES SCREEN ===================== -->
+<div id="screen-sim" class="screen hidden max-w-3xl mx-auto px-4 py-4">
+  <div class="flex items-center mb-5">
+    <button onclick="backToDashboard()" class="flex items-center gap-1.5 text-zinc-400 hover:text-white font-semibold transition-colors mr-auto">
+      <span class="text-lg">←</span> Dashboard
+    </button>
+    <div class="text-xl font-black text-indigo-300 tracking-widest">SIMSESSIES</div>
+    <div class="mr-auto"></div>
+  </div>
+  <p class="text-xs text-zinc-500 mb-4 text-center">Kies een sim-sessie — je krijgt alleen de scenario's van die sessie.<br>Jaartal '23 = sessie uit 2023 · #E = examen.</p>
+  <div id="sim-bubbles" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+</div>
 
 <!-- ===================== NASLAG SCREEN ===================== -->
 <div id="screen-naslag" class="screen hidden max-w-3xl mx-auto px-4 py-4">
@@ -1019,10 +1047,30 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.24";
+const APP_VERSION = "4.25";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
+
+// ============ PRIO-KAARTEN + SIMSESSIES — config (makkelijk te bewerken) ============
+const EXTRA_CARDS = ['39-1','39-2']; // nieuwe tekstkaarten: RA FAIL, EVACUATION
+const PRIORITY_CARDS = new Set(["03-1","04-2","04-3","04-4","05-3","05-4","06-2","06-3","07-4","08-1","08-2","08-3","08-4","08-5","09-2","10-3","11-1","11-3","12-2","12-5","13-1","13-2","13-3","13-4","14-1","14-5","16-1","16-2","16-3","17-4","18-5","19-2","19-3","19-4","20-2","20-4","21-2","21-3","21-4","21-5","22-1","22-3","22-4","24-1","24-2","24-3","24-5","26-1","26-2","26-3","29-3","29-4","30-1","30-5","31-3","31-4","31-5","32-2","33-4","33-5","34-2","35-4","39-1","39-2"]);
+const PRIORITY_INFO = {"13-2":"Sim #5 #6 #7'23 #12 · on ground","13-4":"Sim #5 · on ground","24-3":"Sim #5'23 · on ground","34-2":"Sim #1 #4 #5 #6 #9 #3'23 #4'23 #6'23 #7'23 #12 · takeoff roll","14-1":"Sim #1 #12 · takeoff roll / final app","24-2":"Sim #2 #11 · takeoff roll","22-1":"Sim #2 #11 · after t/o / climbout","19-4":"Sim #2 #4 #9 #11 · after t/o / climbout / cruise","08-4":"Sim #2 #4 #6 #9 #11 · cruise / descent","24-5":"Sim #2 #4 #9 #11 · descent","19-3":"Sim #2 #11 · holding / descent","06-3":"Sim #3 #5'23 #13 · takeoff roll / cruise","18-5":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","19-2":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","26-1":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","32-2":"Sim #2 #3 #11 #13 #3'23 #6'23 · takeoff roll / cruise / descent","08-1":"Sim #3 #5 #6'23 #E · cruise","16-1":"Sim #3 #5 #6'23 #12 #13 #E · takeoff roll / cruise","16-2":"Sim #3 #4 #5 #6'23 · cruise","16-3":"Sim #5 #2'23 #3'23 #5'23 #13 #E · climbout / cruise","24-1":"Sim #3 #5 #6'23 #13 · climbout / cruise","03-1":"Sim #3 #5 #6'23 #13 · climbout / cruise / descent","29-4":"Sim #3 #12 #13 #E · climbout / cruise","30-5":"Sim #4 #10 · after t/o / approach","31-5":"Sim #4 #10 · after t/o / approach","11-3":"Sim #4 #6 · cruise","13-1":"Sim #4 #6 · cruise","26-3":"Sim #4 #10 · approach","22-3":"Sim #4 #10 #2'23 · after t/o / approach","22-4":"Sim #4 #10 · landing","17-4":"Sim #5 #6'23 #7'23 · climbout / cruise / final app","05-3":"Sim #5 · cruise","05-4":"Sim #5 · cruise","12-2":"Sim #5 #8 · cruise","29-3":"Sim #5 #8 · cruise","35-4":"Sim #5 #8 · cruise","26-2":"Sim #5 #5'23 #7'23 · cruise / descent / landing","06-2":"Sim #5 · descent","21-3":"Sim #5 · approach","20-4":"Sim #5 · approach","07-4":"Sim #5 #8 #4'23 · after t/o / climbout / cruise","11-1":"Sim #5 #6 · cruise","33-4":"Sim #6 · cruise","08-2":"Sim #6 · cruise","08-3":"Sim #6 · cruise","08-5":"Sim #6 #9 · cruise / descent","10-3":"Sim #6 #9 · cruise / descent","09-2":"Sim #6 · cruise","20-2":"Sim #6 · cruise","21-5":"Sim #2'23 #E · climbout","21-4":"Sim #5'23 #12 #E · approach / climbout","12-5":"Sim #13 · cruise","13-3":"Sim #13 · cruise","30-1":"Sim #13 · cruise","31-3":"Sim #13 · cruise","31-4":"Sim #13 · cruise","14-5":"Sim #13 · approach","04-3":"Sim #5'23 · climbout","04-4":"Sim #5'23 · climbout","04-2":"Sim #5'23 · climbout","21-2":"Sim #10 · takeoff roll","33-5":"Sim #1 · cruise","39-1":"Sim #6 · taxi / dispatch","39-2":"Sim #5 #5'23 #6'23 #7'23 · on ground"};
+const SIM_SESSIONS = {"1":["14-1","33-5","34-2"],"2":["08-4","18-5","19-2","19-3","19-4","22-1","24-2","24-5","26-1","32-2"],"2-23":["16-3","21-5","22-3"],"3":["03-1","06-3","08-1","16-1","16-2","18-5","19-2","24-1","26-1","29-4","32-2"],"3-23":["16-3","18-5","19-2","26-1","32-2","34-2"],"4":["08-4","11-3","13-1","16-2","19-4","22-3","22-4","24-5","26-3","30-5","31-5","34-2"],"4-23":["07-4","34-2"],"5":["03-1","05-3","05-4","06-2","07-4","08-1","11-1","12-2","13-2","13-4","16-1","16-2","16-3","17-4","20-4","21-3","24-1","26-2","29-3","34-2","35-4","39-2"],"5-23":["04-2","04-3","04-4","06-3","16-3","21-4","24-3","26-2","39-2"],"6":["08-2","08-3","08-4","08-5","09-2","10-3","11-1","11-3","13-1","13-2","20-2","33-4","34-2","39-1"],"6-23":["03-1","08-1","16-1","16-2","17-4","18-5","19-2","24-1","26-1","32-2","34-2","39-2"],"7-23":["13-2","17-4","26-2","34-2","39-2"],"8":["07-4","12-2","29-3","35-4"],"9":["08-4","08-5","10-3","19-4","24-5","34-2"],"10":["21-2","22-3","22-4","26-3","30-5","31-5"],"11":["08-4","18-5","19-2","19-3","19-4","22-1","24-2","24-5","26-1","32-2"],"12":["13-2","14-1","16-1","21-4","29-4","34-2"],"13":["03-1","06-3","12-5","13-3","14-5","16-1","16-3","18-5","19-2","24-1","26-1","29-4","30-1","31-3","31-4","32-2"],"E":["08-1","16-1","16-3","21-4","21-5","29-4"]};
+function isPrioCard(c){ return !!c && PRIORITY_CARDS.has(c.id); }
+function prioUrgencySort(seenCount){
+  return (a,b)=>{
+    const aP=isPrioCard(a)&&a.lastScore!=='good', bP=isPrioCard(b)&&b.lastScore!=='good';
+    if(aP!==bP) return aP?-1:1;                 // prio-niet-groen eerst
+    const aN=!a.lastScore, bN=!b.lastScore;
+    if(aN!==bN) return aN?-1:1;                 // nieuw eerst
+    const aD=(a.nextDue||0)-seenCount, bD=(b.nextDue||0)-seenCount;
+    if(aD!==bD) return aD-bD;                   // meest overdue eerst
+    return a._rand-b._rand;
+  };
+}
+function simLabel(sid){ return sid==='E' ? '#E' : (/-23$/.test(sid) ? '#'+sid.slice(0,-3)+" '23" : '#'+sid); }
+// =====================================================================================
 
 const SESSION_LABELS = {
   super:   "Supercyclus",
@@ -1072,6 +1120,8 @@ function makeInitialCards() {
       list.push(makeBlankCard(`${pp}-${c}`, `flashcards/front_${pp}_${c}.png`, `flashcards/back_${pp}_${c}.png`));
     }
   }
+  EXTRA_CARDS.forEach(id => { const [pp,c] = id.split('-');
+    list.push(makeBlankCard(id, `flashcards/front_${pp}_${c}.png`, `flashcards/back_${pp}_${c}.png`)); });
   return list;
 }
 
@@ -1132,6 +1182,9 @@ function loadData() {
       if (c.flagNote === undefined) c.flagNote = '';
       if (c.flagNoteUpdatedAt === undefined) c.flagNoteUpdatedAt = null;
     });
+    // Nieuwe kaarten (bv. 39-1/39-2) aanvullen ZONDER progressie te verliezen
+    const _have = new Set(cards.map(c => c.id));
+    makeInitialCards().forEach(nc => { if (!_have.has(nc.id)) cards.push(nc); });
   } catch(e) {
     console.error("Fout bij laden data:", e);
     cards = makeInitialCards();
@@ -1542,6 +1595,7 @@ function updateDashboard() {
 function showDashboard() {
   document.getElementById('screen-study').classList.add('hidden');
   document.getElementById('screen-naslag').classList.add('hidden');
+  document.getElementById('screen-sim').classList.add('hidden');
   document.getElementById('screen-dashboard').classList.remove('hidden');
   updateDashboard();
   maybeSyncOnDashboard();
@@ -1557,22 +1611,23 @@ function getSessionQueue(type) {
   if (type === 'flagged') return cards.filter(c => c.flagged).map(c => c.id);
 
   const seenCount = getSeenCount();
-  if (type === 'super') {
-    // Supercyclus: altijd alle kaarten, gesorteerd op urgentie:
-    // 1. Nooit gezien (new) → altijd eerst
-    // 2. Due kaarten (nextDue <= seenCount) → meest overdue eerst
-    // 3. Nog niet due → soonest due eerst (zodat er altijd iets te doen is)
-    pool = [...cards];
+  // Simsessie (type = 'sim:<id>'): alleen de kaarten van die sim-sessie.
+  if (typeof type === 'string' && type.indexOf('sim:') === 0) {
+    const set = new Set(SIM_SESSIONS[type.slice(4)] || []);
+    pool = cards.filter(c => set.has(c.id));
     pool.forEach(c => c._rand = Math.random());
-    pool.sort((a, b) => {
-      const aNew = !a.lastScore;
-      const bNew = !b.lastScore;
-      if (aNew !== bNew) return aNew ? -1 : 1;
-      const aDiff = (a.nextDue || 0) - seenCount; // negatief = overdue
-      const bDiff = (b.nextDue || 0) - seenCount;
-      if (aDiff !== bDiff) return aDiff - bDiff;   // meest overdue eerst
-      return a._rand - b._rand;
-    });
+    pool.sort(prioUrgencySort(seenCount));
+    return pool.map(c => c.id);
+  }
+  if (type === 'super') {
+    // Supercyclus met PRIO-GATE: zolang er een prio-kaart ROOD of NIEUW is, bevat de
+    // cyclus ALLEEN die prio-kaarten (drempel "niet meer rood"). Daarna komt de rest,
+    // maar prio-kaarten houden voorrang tot ze GROEN zijn. Sort: prio-niet-groen → nieuw
+    // → meest overdue. (rood ~30 / oranje ~60 / groen 120-760 via INTERVALS.)
+    const prioBlocking = cards.filter(c => isPrioCard(c) && (c.lastScore === 'bad' || !c.lastScore));
+    pool = prioBlocking.length ? prioBlocking : [...cards];
+    pool.forEach(c => c._rand = Math.random());
+    pool.sort(prioUrgencySort(seenCount));
   } else if (type === 'bad')  { pool = cards.filter(c => c.lastScore === 'bad');  }
   else if (type === 'mwah')   { pool = cards.filter(c => c.lastScore === 'mwah'); }
   else if (type === 'good')   { pool = cards.filter(c => c.lastScore === 'good'); }
@@ -1593,6 +1648,10 @@ function startSession(type, forceNew = false) {
   if (type === 'super' && !forceNew) {
     const saved = loadSuperSession();
     if (saved && saved.index < saved.queue.length) resumeState = saved;
+  }
+  // PRIO-GATE heeft voorrang: zolang er rode/nieuwe prio-kaarten zijn, drill die eerst.
+  if (type === 'super' && cards.some(c => isPrioCard(c) && (c.lastScore === 'bad' || !c.lastScore))) {
+    resumeState = null;
   }
   if (resumeState) {
     session = resumeState;
@@ -1726,7 +1785,10 @@ function showCurrentCard() {
   showFrontOnly(card);
 
   // Update header
-  document.getElementById('session-type-label').textContent = SESSION_LABELS[session.type] || session.type;
+  document.getElementById('session-type-label').textContent =
+    (typeof session.type === 'string' && session.type.indexOf('sim:') === 0)
+      ? ('Sim ' + simLabel(session.type.slice(4)))
+      : (SESSION_LABELS[session.type] || session.type);
   document.getElementById('session-progress-label').textContent =
     `Kaart ${session.index + 1} / ${session.queue.length}`;
 
@@ -1753,6 +1815,9 @@ function showCurrentCard() {
   document.getElementById('card-id-display').textContent = `Kaart ${card.id}`;
   updateLastReviewed(card);
   updateCardStats(card);
+  // Prio-info-label (klein, subtiel boven de kaart)
+  { const _el = document.getElementById('prio-info-label'); const _inf = PRIORITY_INFO[card.id];
+    if (_inf) { _el.textContent = _inf; _el.classList.remove('hidden'); } else { _el.classList.add('hidden'); } }
 
   // Flagged session: toon beide zijden direct + notitie (geen flip nodig)
   if (isFlaggedSession) {
@@ -2918,6 +2983,28 @@ async function loadMetadata() {
       if (hint) hint.textContent = `Zoek in ${count} flashcards · trefwoorden worden herkend in alle tekst`;
     }
   } catch(e) { /* metadata not yet generated — run app.py first */ }
+}
+
+function showSimScreen() {
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  document.getElementById('screen-study').classList.add('hidden');
+  document.getElementById('screen-naslag').classList.add('hidden');
+  document.getElementById('screen-sim').classList.remove('hidden');
+  renderSimBubbles();
+}
+function renderSimBubbles() {
+  const wrap = document.getElementById('sim-bubbles'); if (!wrap) return;
+  wrap.innerHTML = '';
+  Object.keys(SIM_SESSIONS).forEach(sid => {
+    const ids = SIM_SESSIONS[sid];
+    const open = ids.filter(id => { const c = getCard(id); return c && c.lastScore !== 'good'; }).length;
+    const b = document.createElement('button');
+    b.className = 'btn-session bg-indigo-950 hover:bg-indigo-900 border border-indigo-800/50 text-indigo-200 flex flex-col items-center justify-center text-center py-3';
+    b.onclick = () => startSession('sim:' + sid);
+    b.innerHTML = `<span class="font-black text-base">${simLabel(sid)}</span>` +
+      `<span class="text-[10px] text-indigo-400/70 mt-0.5">${ids.length} kaart${ids.length===1?'':'en'}${open?` · ${open} open`:' · klaar'}</span>`;
+    wrap.appendChild(b);
+  });
 }
 
 function showNalasScreen() {

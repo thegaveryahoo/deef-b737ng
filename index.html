@@ -756,6 +756,9 @@
                 class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:scale-95 rounded-xl font-black text-zinc-200 text-xl transition-all disabled:opacity-25">›</button>
       </div>
 
+      <!-- Prio info-label (sim-sessies + fase) -->
+      <div id="nalas-prio-info" class="hidden text-center text-[11px] tracking-wide text-amber-500/80 font-semibold mb-2 px-2"></div>
+
       <!-- Voorzijde -->
       <div class="mb-3">
         <div class="text-center mb-1"><span class="card-badge">Voorzijde</span></div>
@@ -1074,7 +1077,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.26";
+const APP_VERSION = "4.27";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -3151,6 +3154,9 @@ function showNalasCard(idx) {
   document.getElementById('nalas-img-back').src  = card.back;
   document.getElementById('nalas-card-id-badge').textContent = `Kaart ${card.id}`;
   document.getElementById('nalas-nav-label').textContent = `${idx + 1} / ${nalasSession.queue.length}`;
+  // Prio info-label (sim-sessies + fase) — ook tonen in Naslag
+  { const _el = document.getElementById('nalas-prio-info'); const _inf = PRIORITY_INFO[card.id];
+    if (_inf) { _el.textContent = _inf; _el.classList.remove('hidden'); } else { _el.classList.add('hidden'); } }
 
   const infoMap = {
     back:    `Gevonden op achterzijde (regel ${entry.matchPos})`,

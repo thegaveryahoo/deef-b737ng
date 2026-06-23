@@ -6,7 +6,8 @@
 // v4.26: supercyclus terug naar origineel algoritme; 2e supercyclus 'Simsessies (prio)' met eigen progressiebalk
 // v4.27: prio info-label (sim-sessies + fase) nu ook zichtbaar in NASLAG
 // v4.28: 26 prio-kaarten toegevoegd (nu 90); nieuwe sim-sessies incl. sub-sessie #5-2 + 2023-varianten
-const CACHE = 'b737-trainer-v4.28';
+// v4.29: HTML nu NETWORK-FIRST -> updates direct zichtbaar (geen dubbele refresh meer)
+const CACHE = 'b737-trainer-v4.29';
 const TOTAL_PAGES = 39;
 const CARDS_PER_PAGE = 5;
 
@@ -116,24 +117,17 @@ self.addEventListener('fetch', e => {
   const isHtml = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
   if (isHtml) {
-    // Cache-first voor HTML: geef altijd gecachte versie als netwerk faalt of te traag is
-    // Achtergrond: haal nieuwe versie op en update cache (zodat volgende keer de nieuwste geladen wordt)
+    // NETWORK-FIRST voor HTML: altijd de nieuwste versie laden als je online bent, zodat
+    // updates DIRECT zichtbaar zijn (geen dubbele refresh meer). Offline → val terug op cache.
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        const networkFetch = fetch(e.request).then(res => {
-          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-          return res;
-        });
-        // Als er een gecachte versie is: geef die direct terug, haal netwerk op de achtergrond
-        if (cached) {
-          networkFetch.catch(() => {}); // achtergrond update, negeer fouten
-          return cached;
-        }
-        // Geen cache: probeer netwerk, anders foutmelding
-        return networkFetch.catch(() =>
-          new Response('Offline — open de app eerst met een internetverbinding', { status: 503 })
-        );
-      })
+      fetch(e.request).then(res => {
+        if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
+        return res;
+      }).catch(() =>
+        caches.match(e.request).then(cached =>
+          cached || new Response('Offline — open de app eerst met een internetverbinding', { status: 503 })
+        )
+      )
     );
   } else {
     // Cache-first voor alle andere bestanden (afbeeldingen, scripts, etc.)

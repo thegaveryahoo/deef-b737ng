@@ -5,7 +5,8 @@
 // v4.25: prio-kaarten + prio-gate, SIMSESSIES, info-labels, 2 nieuwe kaarten (RA FAIL/EVAC), 29-3 front
 // v4.26: supercyclus terug naar origineel algoritme; 2e supercyclus 'Simsessies (prio)' met eigen progressiebalk
 // v4.27: prio info-label (sim-sessies + fase) nu ook zichtbaar in NASLAG
-const CACHE = 'b737-trainer-v4.27';
+// v4.28: 26 prio-kaarten toegevoegd (nu 90); nieuwe sim-sessies incl. sub-sessie #5-2 + 2023-varianten
+const CACHE = 'b737-trainer-v4.28';
 const TOTAL_PAGES = 39;
 const CARDS_PER_PAGE = 5;
 

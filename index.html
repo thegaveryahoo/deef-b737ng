@@ -1085,7 +1085,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.30";
+const APP_VERSION = "4.31";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1789,7 +1789,9 @@ function browseCard(dir) {
     if (session.index >= session.queue.length - 1) return;
     session.index++;
   }
-  if (session.type === 'super' || session.type === 'super-prio') saveSuperSession();
+  // NB: bewust géén saveSuperSession() hier — bladeren is puur navigeren (zoals swipe altijd al deed).
+  // De supercyclus-positie wordt alléén vastgelegd bij BEOORDELEN (rateAndNext), zodat de
+  // verlies-bestendige cross-device sync volledig ongemoeid blijft.
   showCurrentCard();
 }
 function nextFlaggedCard() { browseCard(1); }

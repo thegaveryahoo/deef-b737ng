@@ -591,14 +591,6 @@
   <div id="card-swipe-area" class="relative">
     <button id="btn-flag-card" onclick="toggleFlagCard()" class="absolute top-2 right-2 text-xl text-zinc-600 z-10 p-1">🏳️</button>
 
-    <!-- Bladerpijlen (vorige/volgende) — overlay op de kaartranden; werken ook met ← → toetsen -->
-    <button id="browse-prev" type="button" onclick="browseCard(-1)" aria-label="Vorige kaart"
-      class="browse-arrow hidden absolute left-1 top-1/2 -translate-y-1/2 z-20 w-10 h-16 flex items-center justify-center rounded-2xl bg-zinc-900/70 hover:bg-zinc-800 active:scale-95 text-zinc-100 text-3xl font-bold leading-none disabled:opacity-20 disabled:pointer-events-none transition-all select-none"
-      title="Vorige kaart (←)">‹</button>
-    <button id="browse-next" type="button" onclick="browseCard(1)" aria-label="Volgende kaart"
-      class="browse-arrow hidden absolute right-1 top-1/2 -translate-y-1/2 z-20 w-10 h-16 flex items-center justify-center rounded-2xl bg-zinc-900/70 hover:bg-zinc-800 active:scale-95 text-zinc-100 text-3xl font-bold leading-none disabled:opacity-20 disabled:pointer-events-none transition-all select-none"
-      title="Volgende kaart (→)">›</button>
-
     <!-- FRONT ONLY VIEW -->
     <div id="view-front">
       <div class="mb-3 text-center">
@@ -625,6 +617,16 @@
     </div>
 
   </div><!-- /card-swipe-area -->
+
+  <!-- Bladerknoppen — ONDER de kaart (buiten de kaart). Werken ook met de ← → toetsen. -->
+  <div id="browse-nav" class="hidden items-center gap-3 mt-3">
+    <button id="browse-prev" type="button" onclick="browseCard(-1)" aria-label="Vorige kaart"
+      class="browse-arrow flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 disabled:opacity-30 disabled:pointer-events-none rounded-2xl font-bold text-zinc-200 text-sm transition-all select-none"
+      title="Vorige kaart (←)">‹ Vorige</button>
+    <button id="browse-next" type="button" onclick="browseCard(1)" aria-label="Volgende kaart"
+      class="browse-arrow flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 disabled:opacity-30 disabled:pointer-events-none rounded-2xl font-bold text-zinc-200 text-sm transition-all select-none"
+      title="Volgende kaart (→)">Volgende ›</button>
+  </div>
 
   <!-- Card info row -->
   <div class="flex justify-between items-center mt-1 px-1">
@@ -1085,7 +1087,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.31";
+const APP_VERSION = "4.32";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1798,12 +1800,13 @@ function nextFlaggedCard() { browseCard(1); }
 function prevFlaggedCard() { browseCard(-1); }
 // Overlay-bladerpijlen tonen/verbergen + begrenzen (alleen in niet-flagged sessies)
 function updateBrowseArrows() {
+  const nav  = document.getElementById('browse-nav');
   const prev = document.getElementById('browse-prev');
   const next = document.getElementById('browse-next');
-  if (!prev || !next) return;
+  if (!nav || !prev || !next) return;
   const show = !!session && session.type !== 'flagged' && session.index < session.queue.length;
-  prev.classList.toggle('hidden', !show);
-  next.classList.toggle('hidden', !show);
+  nav.classList.toggle('hidden', !show);
+  nav.classList.toggle('flex', show);
   if (show) {
     prev.disabled = session.index <= 0;
     next.disabled = session.index >= session.queue.length - 1;

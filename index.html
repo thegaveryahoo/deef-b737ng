@@ -591,6 +591,14 @@
   <div id="card-swipe-area" class="relative">
     <button id="btn-flag-card" onclick="toggleFlagCard()" class="absolute top-2 right-2 text-xl text-zinc-600 z-10 p-1">🏳️</button>
 
+    <!-- Bladerpijlen (vorige/volgende) — overlay op de kaartranden; werken ook met ← → toetsen -->
+    <button id="browse-prev" type="button" onclick="browseCard(-1)" aria-label="Vorige kaart"
+      class="browse-arrow hidden absolute left-1 top-1/2 -translate-y-1/2 z-20 w-10 h-16 flex items-center justify-center rounded-2xl bg-zinc-900/70 hover:bg-zinc-800 active:scale-95 text-zinc-100 text-3xl font-bold leading-none disabled:opacity-20 disabled:pointer-events-none transition-all select-none"
+      title="Vorige kaart (←)">‹</button>
+    <button id="browse-next" type="button" onclick="browseCard(1)" aria-label="Volgende kaart"
+      class="browse-arrow hidden absolute right-1 top-1/2 -translate-y-1/2 z-20 w-10 h-16 flex items-center justify-center rounded-2xl bg-zinc-900/70 hover:bg-zinc-800 active:scale-95 text-zinc-100 text-3xl font-bold leading-none disabled:opacity-20 disabled:pointer-events-none transition-all select-none"
+      title="Volgende kaart (→)">›</button>
+
     <!-- FRONT ONLY VIEW -->
     <div id="view-front">
       <div class="mb-3 text-center">
@@ -1077,7 +1085,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.29";
+const APP_VERSION = "4.30";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -1768,13 +1776,36 @@ function unflagCurrentCard() {
   saveData(); updateDashboard(); showToast('Markering verwijderd');
   session.index++; showCurrentCard();
 }
-function nextFlaggedCard() {
+// Bladeren tussen kaarten (zónder beoordelen) — gedeeld door de pijlknoppen, de ← → toetsen en swipe.
+// Begrensd op [0, laatste]: bladeren beëindigt de sessie nooit. Je rondt een sessie af door de
+// laatste kaart te BEOORDELEN (rateAndNext), niet door erlangs te bladeren.
+function browseCard(dir) {
   if (!session) return;
-  session.index++; showCurrentCard();
+  if (session.index >= session.queue.length) return; // op het 'sessie voltooid'-scherm: niet bladeren
+  if (dir < 0) {
+    if (session.index <= 0) return;
+    session.index--;
+  } else {
+    if (session.index >= session.queue.length - 1) return;
+    session.index++;
+  }
+  if (session.type === 'super' || session.type === 'super-prio') saveSuperSession();
+  showCurrentCard();
 }
-function prevFlaggedCard() {
-  if (!session || session.index <= 0) return;
-  session.index--; showCurrentCard();
+function nextFlaggedCard() { browseCard(1); }
+function prevFlaggedCard() { browseCard(-1); }
+// Overlay-bladerpijlen tonen/verbergen + begrenzen (alleen in niet-flagged sessies)
+function updateBrowseArrows() {
+  const prev = document.getElementById('browse-prev');
+  const next = document.getElementById('browse-next');
+  if (!prev || !next) return;
+  const show = !!session && session.type !== 'flagged' && session.index < session.queue.length;
+  prev.classList.toggle('hidden', !show);
+  next.classList.toggle('hidden', !show);
+  if (show) {
+    prev.disabled = session.index <= 0;
+    next.disabled = session.index >= session.queue.length - 1;
+  }
 }
 function updateFlaggedNavButtons() {
   if (!session || session.type !== 'flagged') return;
@@ -1884,6 +1915,7 @@ function showCurrentCard() {
     clearTimeout(_flaggedNoteSaveTimer);
   }
   updateFlagButton();
+  updateBrowseArrows();
 }
 
 function showFrontOnly(card) {
@@ -2068,13 +2100,10 @@ function resetCurrentCardStats() {
     if (isHorizSwipe) {
       // Swipe = ALLEEN bladeren (nooit beoordelen — dat gaf onbedoelde scores).
       // Rechts = vorige kaart, links = volgende kaart. Geldt in beide weergaven.
-      if (dx > 0) {
-        if (session.index > 0) { session.index--; showCurrentCard(); }
-      } else {
-        session.index++;
-        showCurrentCard();
-      }
-    } else if (isTap && frontVisible) {
+      browseCard(dx > 0 ? -1 : 1);
+    } else if (isTap && frontVisible &&
+               !(e.target && e.target.closest && e.target.closest('.browse-arrow'))) {
+      // Tik op de kaart = flippen — maar niet wanneer je op een bladerpijl tikt.
       flipCard();
     }
   }
@@ -2082,6 +2111,28 @@ function resetCurrentCardStats() {
   document.addEventListener('touchstart', onTouchStart, { passive: true });
   document.addEventListener('touchend', onTouchEnd, { passive: true });
 })();
+
+// =====================================================================
+// TOETSENBORD-NAVIGATIE  (← vorige · → volgende)
+// =====================================================================
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // Niet kapen terwijl je typt (notitie-veld, zoekbalk, etc.)
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+
+  const studyVisible = !document.getElementById('screen-study').classList.contains('hidden');
+  const nalasVisible = !document.getElementById('screen-naslag').classList.contains('hidden');
+
+  if (studyVisible && session) {
+    e.preventDefault();
+    browseCard(e.key === 'ArrowLeft' ? -1 : 1);
+  } else if (nalasVisible && nalasSession) {
+    e.preventDefault();
+    if (e.key === 'ArrowLeft') nalasPrev(); else nalasNext();
+  }
+});
 
 // =====================================================================
 // ADD / EDIT CARD MODAL

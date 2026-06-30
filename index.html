@@ -1087,7 +1087,7 @@
 // =====================================================================
 // CONSTANTS & CONFIG
 // =====================================================================
-const APP_VERSION = "4.32";
+const APP_VERSION = "4.33";
 const STORAGE_KEY = "b737_trainer_v3";
 const TOTAL_PAGES = 38;
 const CARDS_PER_PAGE = 5;
@@ -2548,7 +2548,22 @@ function loadNotesAcc() {
       notesAcc[c.id] = { note: c.flagNote, at: c.flagNoteUpdatedAt || new Date().toISOString() };
     }
   });
+  // Saneer bestaande notities één keer → herstelt een eerdere merge-explosie ook lokaal,
+  // zodat dit apparaat geen opgeblazen notitie meer naar de server pusht.
+  let cleaned = false;
+  Object.entries(notesAcc).forEach(([id, e]) => {
+    const orig = (e && e.note) || '';
+    const d = dedupeNote(orig);
+    if (d !== orig) {
+      notesAcc[id] = { note: d, at: (e && e.at) || new Date().toISOString() };
+      const c = getCard(id);
+      if (c) c.flagNote = d;
+      cleaned = true;
+    }
+  });
   saveNotesAcc();
+  // Direct persisteren zonder push te triggeren (push gebeurt pas na eerste succesvolle sync)
+  if (cleaned) localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: APP_VERSION, cards }));
 }
 function saveNotesAcc() {
   try { localStorage.setItem(NOTES_ACC_KEY, JSON.stringify(notesAcc)); } catch(e) {}
@@ -2558,8 +2573,24 @@ function updateAccFromCard(card) {
   else { notesAcc[card.id] = { note: card.flagNote, at: card.flagNoteUpdatedAt || new Date().toISOString() }; }
   saveNotesAcc();
 }
+// Dedupliceert een notitie: split op '\n---\n', trim, gooi lege + dubbele segmenten eruit, sorteer
+// (stabiel over apparaten zodat de server niet flip-flopt) en cap het geheel. Dit maakt de merge
+// CONVERGENT: twee apparaten komen op dezelfde set uit i.p.v. eindeloos te groeien.
+// (Fix voor de merge-amplificatie-bug die één notitie tot honderdduizenden tekens liet exploderen.)
+function dedupeNote(s) {
+  const seen = new Set();
+  let segs = [];
+  for (const seg of String(s || '').split('\n---\n').map(x => x.trim()).filter(Boolean)) {
+    if (!seen.has(seg)) { seen.add(seg); segs.push(seg); }
+  }
+  segs.sort();
+  // Defensieve cap: nooit meer dan 25 segmenten of ~8000 tekens (ruim onder de Sheets-cellimiet van 50000)
+  segs = segs.slice(0, 25);
+  while (segs.length > 1 && segs.join('\n---\n').length > 8000) segs.pop();
+  return segs.join('\n---\n');
+}
 function mergeNotesFromServer(remoteNotes) {
-  // Merge servernotities in accumulator én in lokale kaarten
+  // Merge servernotities in accumulator én in lokale kaarten — geconvergeerd + gededupliceerd.
   let changed = false;
   Object.entries(remoteNotes).forEach(([cardId, entry]) => {
     const remoteNote = (entry.note || '').trim();
@@ -2568,13 +2599,9 @@ function mergeNotesFromServer(remoteNotes) {
     const localNote = existing ? (existing.note || '').trim() : '';
     const remoteAt  = entry.at ? new Date(entry.at).getTime() : 0;
     const localAt   = existing && existing.at ? new Date(existing.at).getTime() : 0;
-    let finalNote = localNote, finalAt = localAt;
-    if (!localNote) {
-      finalNote = remoteNote; finalAt = remoteAt;
-    } else if (remoteNote !== localNote) {
-      const merged = remoteAt <= localAt ? remoteNote + '\n---\n' + localNote : localNote + '\n---\n' + remoteNote;
-      finalNote = merged; finalAt = Math.max(remoteAt, localAt);
-    }
+    // Combineer beide kanten en dedupliceer → geen eindeloze groei meer.
+    const finalNote = dedupeNote(localNote + (localNote && remoteNote ? '\n---\n' : '') + remoteNote);
+    const finalAt   = Math.max(remoteAt, localAt) || Date.now();
     if (finalNote !== localNote) {
       notesAcc[cardId] = { note: finalNote, at: new Date(finalAt).toISOString() };
       const card = getCard(cardId);
@@ -3002,9 +3029,12 @@ async function pushToServer(silent = false) {
         const latestAt = Object.values(notesAcc).reduce((max, e) => {
           const t = e.at ? new Date(e.at).getTime() : 0; return t > max ? t : max;
         }, 0);
+        const notesClean = Object.fromEntries(
+          Object.entries(notesAcc).map(([id, e]) => [id, { note: dedupeNote((e && e.note) || ''), at: (e && e.at) || new Date().toISOString() }])
+        );
         cardList.push({
           id: '_notes_index',
-          keywords: JSON.stringify(notesAcc),
+          keywords: JSON.stringify(notesClean),
           lastReviewed: new Date(latestAt || Date.now()).toISOString(),
           goodCount: 0, mwahCount: 0, badCount: 0,
           lastScore: null, reviews: 0, nextDue: 0, custom: false, imageUpdatedAt: null
